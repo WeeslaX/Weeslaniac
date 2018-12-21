@@ -11,7 +11,7 @@ import random
 import os
 
 # User inputs
-numberOfInstructions = 250
+numberOfInstructions = 500
 chanceOfNormalClicks = 54
 chanceOfLongClicks = 36
 chanceOfScroll = 10
@@ -117,8 +117,10 @@ class Node:
 
         # Conditions
         clickCondition = "'clickable': 'true'"
+        enabledCondition = "'enabled': 'true'"
         longClickCondition = "'long-clickable': 'true'"
         scrollCondition = "'scrollable': 'true'"
+
 
         # Keeps track of all Long Click view
         longClickIndex = 0
@@ -127,8 +129,8 @@ class Node:
         root = ET.fromstring(state)
         for elem in root.iter():
             strAttrib = str(elem.attrib)
-            # View is clickable
-            if clickCondition in strAttrib:
+            # View is enabled and clickable
+            if clickCondition in strAttrib and enabledCondition in strAttrib:
                 # Obtain XY Coordinates of clickable and enabled views
                 start = strAttrib.find("'bounds': '") + 12
                 end = strAttrib.find('[', start)
@@ -234,18 +236,20 @@ class Node:
 def generateHashedState(state):
     # Conditions
     clickCondition = "'clickable': 'true'"
-    # enableCondition = "'enabled': 'true'"
+    enableCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
+    scrollCondition = "'scrollable': 'true'"
     # Attributes
     resourceId = ''
     view = ''
     package = ''
     longClickable = ''
+    scroll = 'False'
     root = ET.fromstring(state)
     for elem in root.iter():
         strAttrib = str(elem.attrib)
         # Find clickable Views
-        if clickCondition in strAttrib:
+        if clickCondition in strAttrib and enableCondition in strAttrib:
             # Obtain package names
             start = strAttrib.find("'package': '") + 12
             end = strAttrib.find("'", start)
@@ -270,10 +274,12 @@ def generateHashedState(state):
             # Long clickable
             if longClickCondition in strAttrib:
                 longClickable = longClickable + "True"
-
+        # Determine if scrollable
+        if scrollCondition in strAttrib:
+            scroll = 'True'
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+longClickable)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
 
 
 def setupLogFile():
@@ -400,12 +406,12 @@ def scroll_up():
     f.write("time.sleep(3)\n")
 
 
-def scroll_end():
+def scroll_down():
     global prevNode
-    d(scrollable=True).scroll.toEnd()
+    d(scrollable=True).swipe.up()
     d.wait.update()
     time.sleep(1.5)
-    temp = "d(scrollable=True).scroll.toEnd() # At " + prevNode.name
+    temp = "d(scrollable=True).swipe.up() # At " + prevNode.name
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
@@ -682,7 +688,7 @@ def operationDecision():
             long_click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
             return
 
-    # # Scroll Selected
+    # Scroll Selected
     if choice == 1:
         # State cannot be scrolled
         if prevNode.isScrollable is False:
@@ -690,7 +696,16 @@ def operationDecision():
 
         # State can be scrolled
         else:
-            scroll_end()    # To have scroll up as well
+            # Direction Decision Point
+            scrollDecision = random.randint(0, 1)
+
+            # Scroll up
+            if scrollDecision == 0:
+                scroll_up()
+                return
+
+            # Scroll down
+            scroll_down()    # To have scroll up as well
             return
 
 
