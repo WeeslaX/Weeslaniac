@@ -393,19 +393,19 @@ def scroll_up():
     d(scrollable=True).swipe.down()
     d.wait.update()
     time.sleep(1.5)
-    temp = "d(scrollable=True).swipe.down()# At " + prevNode.name + " (Scroll up) "
+    temp = "d(scrollable=True).swipe.down()# At " + prevNode.name
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
     f.write("time.sleep(3)\n")
 
 
-def scroll_down():
+def scroll_end():
     global prevNode
-    d(scrollable=True).swipe.up()
+    d(scrollable=True).scroll.toEnd()
     d.wait.update()
     time.sleep(1.5)
-    temp = "d(scrollable=True).swipe.up() # At " + prevNode.name + " (Scroll down) "
+    temp = "d(scrollable=True).scroll.toEnd() # At " + prevNode.name
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
@@ -649,39 +649,40 @@ def checkNode():
 
 def currentIndexDecision(decision):
     global prevNode
+    # Decision Point
     # Index logic point for Long Click
-    if decision == 0:
+    if decision == 'long-click':
         index = random.randint(0, len(prevNode.longClickable)-1)
         return prevNode.longClickable[index]
 
-    # Index loginc point for Normal Click
-    if decision == 1:
+    # Index logic point for Normal Click
+    if decision == 'click':
         return random.randint(0, prevNode.clickableLength-1)
 
 
 def operationDecision():
     global prevNode
-    # Operation Decision Point (Weighted Random Algorithm)
+    # Decision Point (Weighted Random Algorithm)
     choice = random.choice([0] * chanceOfLongClicks + [1] * chanceOfScroll + [2] * chanceOfNormalClicks)
 
     # Long Click Selected
     if choice == 0:
         # State has no long clicks
         if prevNode.hasLongClicks is False:
-            # Re-randomise selection
+            # Re-randomise
             temp = chanceOfLongClicks / 2
             choice = random.choice([1] * (chanceOfScroll + temp) + [2] * (chanceOfNormalClicks + temp))
 
         # State has long clicks
         else:
             # Index decision
-            prevNode.currentIndex = currentIndexDecision(choice)
+            prevNode.currentIndex = currentIndexDecision('long-click')
 
             # Long Click Operation
             long_click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
             return
 
-    # Scroll Selected
+    # # Scroll Selected
     if choice == 1:
         # State cannot be scrolled
         if prevNode.isScrollable is False:
@@ -689,21 +690,14 @@ def operationDecision():
 
         # State can be scrolled
         else:
-            # Scroll decision point
-            scrollDecision = random.randint(0,1)
-            if scrollDecision == 0:
-                # Scroll Down
-                scroll_down()
-                return
-            else:
-                # Scroll Up
-                scroll_up()
-                return
+            scroll_end()    # To have scroll up as well
+            return
+
 
     # Normal Click Selected
     if choice == 2:
         # Index decision
-        prevNode.currentIndex = currentIndexDecision(choice)
+        prevNode.currentIndex = currentIndexDecision('click')
 
         # Normal Click Operation
         click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
@@ -765,4 +759,3 @@ f.write("d.press.home()\n")
 f.write("# -End Test Case-\n")
 f.write("#-Number of crashes detected: " + str(crashNum) + "\n")
 f.close()
-
