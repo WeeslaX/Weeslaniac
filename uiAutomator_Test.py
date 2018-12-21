@@ -393,19 +393,19 @@ def scroll_up():
     d(scrollable=True).swipe.down()
     d.wait.update()
     time.sleep(1.5)
-    temp = "d(scrollable=True).swipe.down()# At " + prevNode.name
+    temp = "d(scrollable=True).swipe.down()# At " + prevNode.name + " (Scroll up) "
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
     f.write("time.sleep(3)\n")
 
 
-def scroll_end():
+def scroll_down():
     global prevNode
-    d(scrollable=True).scroll.toEnd()
+    d(scrollable=True).swipe.up()
     d.wait.update()
     time.sleep(1.5)
-    temp = "d(scrollable=True).scroll.toEnd() # At " + prevNode.name
+    temp = "d(scrollable=True).swipe.up() # At " + prevNode.name + " (Scroll down) "
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
@@ -661,14 +661,14 @@ def currentIndexDecision(decision):
 
 def operationDecision():
     global prevNode
-    # Decision Point (Weighted Random Algorithm)
+    # Operation Decision Point (Weighted Random Algorithm)
     choice = random.choice([0] * chanceOfLongClicks + [1] * chanceOfScroll + [2] * chanceOfNormalClicks)
 
     # Long Click Selected
     if choice == 0:
         # State has no long clicks
         if prevNode.hasLongClicks is False:
-            # Re-randomise
+            # Re-randomise selection
             temp = chanceOfLongClicks / 2
             choice = random.choice([1] * (chanceOfScroll + temp) + [2] * (chanceOfNormalClicks + temp))
 
@@ -682,16 +682,23 @@ def operationDecision():
             return
 
     # Scroll Selected
-    if choice == 0:
+    if choice == 1:
         # State cannot be scrolled
         if prevNode.isScrollable is False:
             choice = 2  # Default to normal click
 
         # State can be scrolled
         else:
-            scroll_end()    # To have scroll up as well
-            return
-
+            # Scroll decision point
+            scrollDecision = random.randint(0,1)
+            if scrollDecision == 0:
+                # Scroll Down
+                scroll_down()
+                return
+            else:
+                # Scroll Up
+                scroll_up()
+                return
 
     # Normal Click Selected
     if choice == 2:
