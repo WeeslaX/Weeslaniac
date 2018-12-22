@@ -566,7 +566,7 @@ def checkCurrentPackage(state):
 
     # New invalid state
     invalidStateList.append(invalid)
-    d.screenshot(ssLocation + "Invalid State " + str(len(invalidStateList)+1) + '.png')
+    d.screenshot(ssLocation + "Invalid State " + str(len(invalidStateList)) + '.png')
     return ''
 
 
