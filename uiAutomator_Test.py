@@ -16,12 +16,18 @@ chanceOfNormalClicks = 54
 chanceOfLongClicks = 36
 chanceOfScroll = 10
 selfTransitionLimit = 6     # Defaults at 6
-inputText = 'aaa123'        # Enhancement: User input list
+inputText = '987abc'        # Enhancement: User input list
 deviceName = 'emulator-5554'
 appName = "'content-desc': 'Omni"   # Insert App Name
 ssLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/"
 tcLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"
 
+# Fixed Weights
+enterInput = 70
+doNotEnterInput = 100 - enterInput
+closeKeyboard = 65
+doNotCloseKeyboard = 100 - closeKeyboard
+defaultWeight = 20
 
 # Data Structures
 class MainNode:
@@ -96,24 +102,37 @@ class MainNode:
 
 class Node:
     global prevNode
+    global defaultWeight
 
     def __init__(self, name, state, depth):
+        # Node Attributes
         self.name = str(name)
         self.state = generateHashedState(state)
         self.depth = int(depth)
-        self.clickableXCoor = np.array([], dtype=int)
-        self.clickableYCoor = np.array([], dtype=int)
         self.package = ''
+
+        # Click Attributes
         self.views = []
         self.resourceId = []
+        self.clickableXCoor = np.array([], dtype=int)
+        self.clickableYCoor = np.array([], dtype=int)
+        self.noClickableView = False
+        self.clickableLength = 0
         self.longClickable = []
+        self.hasLongClicks = False
+        self.currentIndex = 0
+
+        # Scroll/Swipe Attributes
+        self.isScrollable = False
+        self.isMultiScrollable = False
+        self.canScrollDown = False
+        self.canScrollUp = False
         self.scrollableX = []
         self.scrollableY = []
-        self.noClickableView = False
-        self.hasLongClicks = False
-        self.isScrollable = False
-        self.clickableLength = 0
-        self.currentIndex = 0
+
+        # Weights
+        self.cTransitionWeight = []
+        self.lcTransitionWeight = []
 
         # Conditions
         clickCondition = "'clickable': 'true'"
@@ -143,6 +162,9 @@ class Node:
                 end = temp.find("]", start)
                 yCoordinate = int(temp[start:end])
                 self.clickableYCoor = np.append(self.clickableYCoor, yCoordinate)
+                # Set clickable weights to default
+                self.cTransitionWeight.append(defaultWeight)
+
                 # Obtain package names
                 start = strAttrib.find("'package': '") + 12
                 end = strAttrib.find("'", start)
@@ -167,6 +189,8 @@ class Node:
                 # View is long-clickable
                 if longClickCondition in strAttrib:
                     self.longClickable.append(longClickIndex)
+                    # Set long-clickable weights to default
+                    self.lcTransitionWeight.append(defaultWeight)
                     # Long clicks Present
                     self.hasLongClicks = True
 
@@ -185,7 +209,14 @@ class Node:
                 end = temp.find("]", start)
                 yCoordinate = int(temp[start:end])
                 self.scrollableY.append(yCoordinate)
-                self.isScrollable = True
+
+                if len(self.scrollableX) == 1:
+                    self.isScrollable = True
+                    self.canScrollDown = True
+                    self.canScrollUp = True
+
+                if len(self.scrollableX) > 1:
+                    self.isMultiScrollable = True
 
         # Get number of clickable objects
         self.clickableLength = len(self.clickableXCoor)
@@ -451,6 +482,10 @@ def checkEmulator():
 
 def checkKeyboard():
     global inputText
+    global enterInput
+    global doNotEnterInput
+    global closeKeyboard
+    global doNotCloseKeyboard
     keyboardCondition = "mInputShown=true"
 
     cmd = 'adb shell dumpsys input_method | grep mInputShown'
@@ -459,10 +494,10 @@ def checkKeyboard():
     # Soft keyboard found
     if keyboardCondition in s:
         # Decision to enter input
-        decisionEnter = random.choice([0] * 70 + [1] * 30)
+        decisionEnter = random.choice([0] * enterInput + [1] * doNotEnterInput)
 
+        # Enter inputText into input field
         if decisionEnter == 0:
-            # Enter inputText into input field
             cmd = "adb shell input text " + inputText
             subprocess.call(cmd)
             print("Enter " + inputText + " into input field")
@@ -478,13 +513,13 @@ def checkKeyboard():
             #In known state
             if keyState_h == stateList[i].state:
                 # Decision to close keyboard
-                decisionClose = random.choice([0] * 65 + [1] * 35)
+                decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
 
                 # Close Keyboard
                 if decisionClose == 0:
                     back("Close keyboard")
 
-                print("Keyboard left open")
+                print("Did not close keyboard")
                 return
 
         # If current state = unknown state, Add new node
@@ -562,7 +597,6 @@ def checkNode():
         # Current state package belongs to 3rd party
         back("Transition into invalid 3rd party app")
         return
-
 
     # Check if state exists
     for i in range(len(stateList)):
@@ -696,17 +730,40 @@ def operationDecision():
 
         # State can be scrolled
         else:
-            # Direction Decision Point
-            scrollDecision = random.randint(0, 1)
+            # State can scroll up and down
+            if prevNode.canScrollDown is True and prevNode.canScrollUp is True:
+                # Direction Decision Point
+                scrollDecision = random.randint(0, 1)
 
-            # Scroll up
-            if scrollDecision == 0:
-                scroll_up()
+                # Scroll up decided
+                if scrollDecision == 0:
+                    scroll_up()
+                    # Check current state
+                    temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
+                    # Cannot scroll up (Self Transition)
+                    if prevNode.state == temp:
+                        prevNode.canScrollUp = False
+                    return
+
+                # Scroll down decided
+                else:
+                    scroll_down()
+                    # Check current state
+                    temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
+                    # Cannot scroll down (Self Transition)
+                    if prevNode.state == temp:
+                        prevNode.canScrollDown = False
+                    return
+
+            # State can only scroll down
+            elif prevNode.canScrollDown is True and prevNode.canScrollUp is False:
+                scroll_down()
                 return
 
-            # Scroll down
-            scroll_down()    # To have scroll up as well
-            return
+            # State can only scroll up
+            elif prevNode.canScrollUp is True and prevNode.canScrollDown is False:
+                scroll_up()
+                return
 
 
     # Normal Click Selected
@@ -748,7 +805,6 @@ checkKeyboard()
 
 # Random Algorithm
 instCount = 0
-# Add optional index skips
 
 # Loop till every clickable view in main activity is selected
 while instCount < numberOfInstructions:
