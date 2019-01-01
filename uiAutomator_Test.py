@@ -12,22 +12,30 @@ import os
 
 # User inputs
 numberOfInstructions = 500
-chanceOfNormalClicks = 54
-chanceOfLongClicks = 36
-chanceOfScroll = 10
+chanceOfNormalClicks = 8
+chanceOfLongClicks = 4
+chanceOfScroll = 2
 selfTransitionLimit = 6     # Defaults at 6
 inputText = '987abc'        # Enhancement: User input list
 deviceName = 'emulator-5554'
-appName = "'content-desc': 'Omni"   # Insert App Name
+appName = "'content-desc': 'Activity"   # Insert App Name
 ssLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/"
 tcLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"
 
-# Fixed Weights
-enterInput = 70
-doNotEnterInput = 100 - enterInput
-closeKeyboard = 65
-doNotCloseKeyboard = 100 - closeKeyboard
-defaultWeight = 20
+# Keyboard Weights
+enterInput = 7
+doNotEnterInput = 10 - enterInput
+closeKeyboard = 3
+doNotCloseKeyboard = 10 - closeKeyboard
+
+# Click Weights
+defaultWeight = 12
+newStateWeight = 7
+selfTransitionWeight = 3
+invalidTransitionWeight = 1
+noPackageWeight = 1
+childParentTransitionWeight = 5
+crashWeight = 3
 
 # Data Structures
 class MainNode:
@@ -373,7 +381,7 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(3)
+    time.sleep(2)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
@@ -406,7 +414,7 @@ def back(text):
 def click(xCoor, yCoor):
     global prevNode
     d.click((xCoor+5), (yCoor+5))
-    time.sleep(2)
+    time.sleep(1.5)
     temp = 'd.click(' + str(xCoor+5) + ', ' + str(yCoor+5) + ') # At '
     info = prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[prevNode.currentIndex]
     print(temp+info)
@@ -455,23 +463,6 @@ def scroll_down():
 
 
 # Logic Checks
-def checkInputWeights():
-    # Check weight of operations:
-    total = chanceOfLongClicks+chanceOfNormalClicks+chanceOfScroll
-
-    # Correct Weights
-    if total == 100:
-        print("Input Weights Ok")
-        return
-
-    elif total <100:
-        print("Input Weights below 100%, Terminating Program")
-        sys.exit()
-    else:
-        print("Input Weights above 100%, Terminating Program")
-        sys.exit()
-
-
 def checkEmulator():
     global deviceName
     cmd = 'adb devices'
@@ -582,10 +573,23 @@ def checkNode():
     if temp != m.package:
         # Current state package is empty
         if temp == '':
+            # Adjust weights of previous node's index based on selection type
+            if selectionType == 'click':
+                prevNode.cTransitionWeight[prevNode.currentIndex] = noPackageWeight
+
+            if selectionType == 'long-click':
+                prevNode.lcTransitionWeight[prevNode.currentIndex] = noPackageWeight
+
             back("Transition into state with no package name")
             return
 
         # Current state package belongs to 3rd party
+        if selectionType == 'click':
+                prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+
+        if selectionType == 'long-click':
+            prevNode.lcTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+
         back("Transition into invalid 3rd party app")
         return
 
@@ -599,12 +603,28 @@ def checkNode():
 
     # Transition to new state
     if stateExist is False:
+        # Adjust weights of previous node's index
+        if selectionType == 'click':
+            prevNode.cTransitionWeight[prevNode.currentIndex] = newStateWeight
+
+        if selectionType == 'long-click':
+            prevNode.lcTransitionWeight[prevNode.currentIndex] = newStateWeight
+
+        # Add new state
         addNode(currentState)
         return
     # Transition to existing state
     else:
         # Transition to main menu, possible Crash
         if currentState_h == m.state:
+
+            # Adjust weights of previous node's index
+            if selectionType == 'click':
+                prevNode.cTransitionWeight[prevNode.currentIndex] = crashWeight
+
+            if selectionType == 'long-click':
+                prevNode.lcTransitionWeight[prevNode.currentIndex] = crashWeight
+
             # Update number of possible crash
             crashNum = crashNum + 1
             temp = "-Possible Crash Occurred-"
@@ -637,6 +657,13 @@ def checkNode():
 
         # Self Transition
         elif currentState_h == prevNode.state:
+            # Adjust weights of previous node's index
+            if selectionType == 'click':
+                prevNode.cTransitionWeight[prevNode.currentIndex] = selfTransitionWeight
+
+            if selectionType == 'long-click':
+                prevNode.lcTransitionWeight[prevNode.currentIndex] = selfTransitionWeight
+
             # Add self transition count
             selfTransitionCount = selfTransitionCount + 1
             temp = "Self Transition in " + prevNode.name
@@ -648,6 +675,13 @@ def checkNode():
         else:
             # Transition from Child state to parent state
             if stateList[index].depth < prevNode.depth:
+                # Adjust weights of previous node's index
+                if selectionType == 'click':
+                    prevNode.cTransitionWeight[prevNode.currentIndex] = childParentTransitionWeight
+
+                if selectionType == 'long-click':
+                    prevNode.lcTransitionWeight[prevNode.currentIndex] = childParentTransitionWeight
+
                 # Reset Self Transition Count
                 selfTransitionCount = 0
                 temp = "Transition from " + prevNode.name + "(" + str(prevNode.depth) + ") to " + stateList[
@@ -680,15 +714,32 @@ def checkNode():
 
 def currentIndexDecision(decision):
     global prevNode
-    # Decision Point
+    global selectionType
     # Index logic point for Long Click
     if decision == 'long-click':
-        index = random.randint(0, len(prevNode.longClickable)-1)
-        return prevNode.longClickable[index]
+        # Change selection type
+        selectionType = "long-click"
+
+        # Selection of index based on weight
+        probabilityList = [0] * prevNode.lcTransitionWeight[0]
+
+        for i in range(1, (len(prevNode.lcTransitionWeight))):
+            probabilityList = probabilityList + ([i] * prevNode.lcTransitionWeight[i])
+
+        return random.choice(probabilityList)
 
     # Index logic point for Normal Click
     if decision == 'click':
-        return random.randint(0, prevNode.clickableLength-1)
+        # Change selection type
+        selectionType = 'click'
+
+        # Selection of index based on weight
+        probabilityList = [0]*prevNode.cTransitionWeight[0]
+
+        for i in range(1, (len(prevNode.cTransitionWeight))):
+            probabilityList = probabilityList + ([i] * prevNode.cTransitionWeight[i])
+
+        return random.choice(probabilityList)
 
 
 def operationDecision():
@@ -756,7 +807,6 @@ def operationDecision():
                 scroll_up()
                 return
 
-
     # Normal Click Selected
     if choice == 2:
         # Index decision
@@ -769,7 +819,6 @@ def operationDecision():
 
 # Start of Testing Program
 checkEmulator()
-checkInputWeights()
 setupLogFile()
 
 # Initialization
@@ -780,6 +829,7 @@ invalidStateList = []   # Keeps track of invalid states (No clickable views)
 crashNum = 0
 selfTransitionCount = 0
 backFlag = False
+selectionType = "click"
 
 # Setup Main Menu
 m = MainNode(d.dump(compressed=True).encode('utf-8'))
