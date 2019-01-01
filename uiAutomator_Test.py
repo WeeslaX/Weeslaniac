@@ -365,6 +365,12 @@ def back(text):
     global stateCount
     global stateList
     global TransitionCount
+    global backFlag
+
+    # Set back() flag to True to skip nodeCheck
+    backFlag = True
+
+    # Operation
     d.press.back()
     d.wait.update()
     time.sleep(3)
@@ -379,7 +385,6 @@ def back(text):
     # back() into Main menu
     if backState_h == m.state:
         print("back() into main menu, Reopening app")
-        prevNode = m
         click(m.appXCoor, m.appYCoor)
 
     # back() to known state
@@ -487,7 +492,6 @@ def checkKeyboard():
     global closeKeyboard
     global doNotCloseKeyboard
     keyboardCondition = "mInputShown=true"
-
     cmd = 'adb shell dumpsys input_method | grep mInputShown'
     s = subprocess.check_output(cmd)
 
@@ -504,30 +508,17 @@ def checkKeyboard():
             f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
             f.write("time.sleep(1.5)\n")
 
-        # Check state after entering input
-        keyState = d.dump(compressed=True).encode('utf-8')
-        keyState_h = generateHashedState(keyState)
+        # Decision to open/close keyboard
+        decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
 
-        # If current state = known state
-        for i in range(len(stateList)):
-            #In known state
-            if keyState_h == stateList[i].state:
-                # Decision to close keyboard
-                decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
+        # Close Keyboard
+        if decisionClose == 0:
+            back("Close keyboard")
+            return
 
-                # Close Keyboard
-                if decisionClose == 0:
-                    back("Close keyboard")
-
-                print("Did not close keyboard")
-                return
-
-        # If current state = unknown state, Add new node
-        msg = "Unknown state when Soft Keyboard Appears."
-        print(msg)
-        f.write("#" + msg + "\n")
-        addNode(keyState)
+        print("Did not close keyboard")
         return
+
     # Soft keyboard not found
     return
 
@@ -788,12 +779,12 @@ stateList = []          # Keeps track of states
 invalidStateList = []   # Keeps track of invalid states (No clickable views)
 crashNum = 0
 selfTransitionCount = 0
+backFlag = False
 
 # Setup Main Menu
 m = MainNode(d.dump(compressed=True).encode('utf-8'))
 prevNode = m
 click(prevNode.appXCoor, prevNode.appYCoor)
-
 
 # Setup App's Main Activity
 temp = Node('S'+str(stateCount), d.dump(compressed=True).encode('utf-8'), 1)
@@ -801,13 +792,15 @@ stateList.append(temp)
 m.package = stateList[0].package     # Use Main Activity's package name
 prevNode = stateList[stateCount]
 stateCount = stateCount + 1
-checkKeyboard()
 
-# Random Algorithm
+# Random Algorithm, limited to number of instructions
 instCount = 0
 
 # Loop till every clickable view in main activity is selected
 while instCount < numberOfInstructions:
+    # Reset back() flag
+    backFlag = False
+
     # Random Algorithm
     operationDecision()
 
@@ -816,7 +809,8 @@ while instCount < numberOfInstructions:
     checkSelfTransLimit()
 
     # Transition Checks
-    checkNode()
+    if backFlag is False:
+        checkNode()
 
     # Instruction Counter
     instCount = instCount + 1
