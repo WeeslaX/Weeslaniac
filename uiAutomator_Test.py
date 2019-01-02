@@ -10,32 +10,32 @@ import hashlib
 import random
 import os
 
-# User inputs
-numberOfInstructions = 250
-chanceOfNormalClicks = 12
+
+# Possible User inputs
+chanceOfNormalClicks = 3
 chanceOfLongClicks = 4
-chanceOfScroll = 2
-selfTransitionLimit = 6     # Defaults at 6
+chanceOfScroll = 3
+selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 deviceName = 'emulator-5554'
-appName = "'content-desc': 'Omni"   # Insert App Name
 ssLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/"
 tcLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"
 
 # Keyboard Weights
-enterInput = 5
+enterInput = 3
 doNotEnterInput = 10 - enterInput
-closeKeyboard = 7
+closeKeyboard = 9
 doNotCloseKeyboard = 10 - closeKeyboard
 
 # Click Weights
-defaultWeight = 21
-newStateWeight = 7
-selfTransitionWeight = 3
+defaultWeight = 40
+newStateWeight = 10
+selfTransitionWeight = 2
 invalidTransitionWeight = 1
 noPackageWeight = 1
 childParentTransitionWeight = 5
-crashWeight = 3
+crashWeight = 2
+
 
 # Data Structures
 class MainNode:
@@ -148,8 +148,7 @@ class Node:
         longClickCondition = "'long-clickable': 'true'"
         scrollCondition = "'scrollable': 'true'"
 
-
-        # Keeps track of all Long Click view
+        # Keeps track of all Long Click views
         longClickIndex = 0
 
         # Parsing with ET to obtain dump information
@@ -203,6 +202,7 @@ class Node:
                     self.hasLongClicks = True
 
                 longClickIndex = longClickIndex + 1
+
             # Find scrollable views
             if scrollCondition in strAttrib:
                 # Obtain XY Coordinates of scrollable coordinates
@@ -271,17 +271,42 @@ class Node:
             # plt.pause(1)
 
 
+# User input error handler
+def numOfActions():
+    isNum = False
+
+    # Loop while user does not input a number
+    while isNum is False:
+        # Ensure input is an integer
+        try:
+            # Prompt user for # of actions
+            ip = input("Enter # of actions: ")
+            int(ip)
+            isNum = True
+
+        except NameError:
+            print("Invalid input. Please re-input an integer value.")
+
+    if ip > 0:
+        return int(ip)
+
+    else:
+        print("Default number of actions selected (500 actions)")
+        return 500
+
+
 # Misc
 def generateHashedState(state):
     # Conditions
     clickCondition = "'clickable': 'true'"
     enableCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
-    scrollCondition = "'scrollable': 'true'"
+    scrollCondition = "'text': 'true'"
     # Attributes
     resourceId = ''
     view = ''
     package = ''
+    text = ''
     longClickable = ''
     scroll = 'False'
     root = ET.fromstring(state)
@@ -303,13 +328,24 @@ def generateHashedState(state):
             start = strAttrib.find("'resource-id': '") + 16
             end = strAttrib.find("'", start)
             temp = strAttrib[start:end]
-            # No resource-id
+            # resource-id is empty
             if temp == '':
                 temp = '(No resource.id)'
                 resourceId = resourceId + temp
             # Has resource-id
             else:
                 resourceId = resourceId + temp
+            # Obtain text
+            start = strAttrib.find("'text': '") + 9
+            end = strAttrib.find("'", start)
+            temp = strAttrib[start:end]
+            # Text is empty
+            if temp == '':
+                temp = '(No text)'
+                text = text + temp
+            else:
+                text = text + temp
+
             # Long clickable
             if longClickCondition in strAttrib:
                 longClickable = longClickable + "True"
@@ -318,7 +354,7 @@ def generateHashedState(state):
             scroll = 'True'
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
 
 
 def setupLogFile():
@@ -394,6 +430,11 @@ def back(text):
     if backState_h == m.state:
         print("back() into main menu, Reopening app")
         click(m.appXCoor, m.appYCoor)
+
+    # back() into same state (Activity cannot be back() - Permissions)
+    if backState_h == prevNode.state:
+        # Click on the first clickable object to exit
+        d(clickable=True).click()
 
     # back() to known state
     for i in range(len(stateList)):
@@ -515,12 +556,15 @@ def checkKeyboard():
 
         # Close Keyboard
         if decisionClose == 0:
-            # Via adb shell
-            cmd = "adb shell input keyevent 111"
-            subprocess.call(cmd)
-            print("Close keyboard")
-            f.write("subprocess.call(" + "'" + cmd + "'" + ") # Close keyboard\n")
-            f.write("time.sleep(1.5)\n")
+            # Via back button (use nodeCheck() to ascertain state)
+            d.press.back()
+            d.wait.update()
+            text = "Close Keyboard"
+            print("d.press.back() - " + str(text))
+            f.write("d.press.back() #" + str(text) + "\n")
+            f.write("d.wait.update()\n")
+            f.write("time.sleep(2.5)\n")
+            time.sleep(1.5)
             return
 
         print("Did not close keyboard")
@@ -744,6 +788,13 @@ def currentIndexDecision(decision):
             probabilityList = probabilityList + ([i] * prevNode.lcTransitionWeight[i])
 
         lcIndex = random.choice(probabilityList)
+
+
+        # Workaround for a rare bug that occurs, default to index 0
+        if lcIndex >= len(prevNode.lcTransitionWeight):
+            print("lcIndex > length Bug, index defaults to 0")
+            lcIndex = 0
+
         return prevNode.longClickable[lcIndex]
 
     # Index logic point for Normal Click
@@ -797,7 +848,13 @@ def operationDecision():
 
                 # Scroll up decided
                 if scrollDecision == 0:
-                    scroll_up()
+                    # Bypass scroll errors
+                    try:
+                        scroll_up()
+                    except:
+                        print("Cannot scroll up, no action taken")
+                        return
+
                     # Check current state
                     temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
                     # Cannot scroll up (Self Transition)
@@ -807,7 +864,13 @@ def operationDecision():
 
                 # Scroll down decided
                 else:
-                    scroll_down()
+                    # Bypass scroll errors
+                    try:
+                        scroll_down()
+                    except:
+                        print("Cannot scroll down, no action taken")
+                        return
+
                     # Check current state
                     temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
                     # Cannot scroll down (Self Transition)
@@ -817,13 +880,23 @@ def operationDecision():
 
             # State can only scroll down
             elif prevNode.canScrollDown is True and prevNode.canScrollUp is False:
-                scroll_down()
-                return
+                # Bypass scroll errors
+                try:
+                    scroll_down()
+                    return
+                except:
+                    print("Cannot scroll down, click instead")
+                    choice = 2
 
             # State can only scroll up
             elif prevNode.canScrollUp is True and prevNode.canScrollDown is False:
-                scroll_up()
-                return
+                # Bypass scroll errors
+                try:
+                    scroll_up()
+                    return
+                except:
+                    print("Cannot scroll up, click instead")
+                    choice = 2
 
     # Normal Click Selected
     if choice == 2:
@@ -835,7 +908,14 @@ def operationDecision():
         return
 
 
-# Start of Testing Program
+# Obtain target app's name
+ipName = raw_input("Enter App Name: ")
+appName = "'content-desc': '" + str(ipName)
+
+# Obtain desired number of actions
+numberOfInstructions = numOfActions()
+
+# Pre-Test Checks
 checkEmulator()
 setupLogFile()
 
