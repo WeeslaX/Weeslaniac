@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 import networkx as nx
 import subprocess
-import matplotlib.pyplot as plt
 from uiautomator import device as d
 import numpy as np
 import sys
@@ -9,23 +8,27 @@ import time
 import hashlib
 import random
 import os
+from Tkinter import *
+from tkMessageBox import *
 
 
 # Possible User inputs
-chanceOfNormalClicks = 4
-chanceOfLongClicks = 5
-chanceOfScroll = 3
-chanceOfSwipe = 3
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 deviceName = 'emulator-5554'
 ssLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/"
 tcLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"
 
+# Operation Weights
+chanceOfNormalClicks = 4
+chanceOfLongClicks = 5
+chanceOfScroll = 3
+chanceOfSwipe = 3
+
 # Keyboard Weights
-enterInput = 3
+enterInput = 4
 doNotEnterInput = 10 - enterInput
-closeKeyboard = 9
+closeKeyboard = 8
 doNotCloseKeyboard = 10 - closeKeyboard
 
 # Click Weights
@@ -125,6 +128,8 @@ class Node:
         self.resourceId = []
         self.clickableXCoor = np.array([], dtype=int)
         self.clickableYCoor = np.array([], dtype=int)
+        self.e_clickableXCoor = np.array([], dtype=int)
+        self.e_clickableYCoor = np.array([], dtype=int)
         self.noClickableView = False
         self.clickableLength = 0
         self.longClickable = []
@@ -160,7 +165,8 @@ class Node:
             strAttrib = str(elem.attrib)
             # View is enabled and clickable
             if clickCondition in strAttrib and enabledCondition in strAttrib:
-                # Obtain XY Coordinates of clickable and enabled views
+
+                # Obtain Start XY Coordinates of clickable and enabled views
                 start = strAttrib.find("'bounds': '") + 12
                 end = strAttrib.find('[', start)
                 temp = strAttrib[start:end]
@@ -172,6 +178,18 @@ class Node:
                 end = temp.find("]", start)
                 yCoordinate = int(temp[start:end])
                 self.clickableYCoor = np.append(self.clickableYCoor, yCoordinate)
+
+                # Obtain End XY Coordinates of clickable and enabled views
+                start = strAttrib.find(str(yCoordinate)) + len(str(yCoordinate)) + 1
+                end = strAttrib.find(" '", start)
+                temp = strAttrib[start:end]
+                start = temp.find("[") + 1
+                end = temp.find(",", start)
+                self.e_clickableXCoor = np.append(self.e_clickableXCoor, int(temp[start:end]))
+                start = temp.find(",") + 1
+                end = temp.find("]", start)
+                self.e_clickableYCoor = np.append(self.e_clickableYCoor, int(temp[start:end]))
+
                 # Set clickable weights to default
                 self.cTransitionWeight.append(defaultWeight)
 
@@ -274,30 +292,6 @@ class Node:
             # plt.axis('off')
             # plt.draw()
             # plt.pause(1)
-
-
-# User input error handler
-def numOfActions():
-    isNum = False
-
-    # Loop while user does not input a number
-    while isNum is False:
-        # Ensure input is an integer
-        try:
-            # Prompt user for # of actions
-            ip = input("Enter # of actions: ")
-            int(ip)
-            isNum = True
-
-        except NameError:
-            print("Invalid input. Please re-input an integer value.")
-
-    if ip > 0:
-        return int(ip)
-
-    else:
-        print("Default number of actions selected (500 actions)")
-        return 500
 
 
 # Misc
@@ -413,6 +407,71 @@ def addNode(state):
     return
 
 
+# GUI Setup
+def save(entries):
+    global gui
+    global appName
+    global numberOfInstructions
+    global deviceName
+
+    # Store App Name
+    appName = "'content-desc': '" + str(entries[0].get())
+
+    # Store number of actions
+    try:
+        numberOfInstructions = int(entries[1].get())
+
+        # Check zero or negative number of actions
+        if numberOfInstructions <= 0:
+            print("Using default number of actions (500)")
+            numberOfInstructions = 500
+    except ValueError:
+        showerror("Invalid input", "Enter an integer for # of Actions")
+        return
+
+    # Store device name
+    deviceName = str(entries[2].get())
+
+    showinfo("Success", "Settings Saved.")
+    gui.quit()
+
+
+def userInputSettings():
+    global gui
+
+    # Bind "Enter" key to save button
+    gui.bind('<Return>', save)
+
+    # Preset Values
+    label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ']
+    default = ['Omni', 500, 'emulator-5554']
+
+    entries = []
+
+    # Gui Settings
+    gui.title("Settings")
+    gui["bg"] = 'black'
+
+    # Automate Multiple Labels
+    index = 0
+    for i in label:
+        Label(text=i, fg='white', bg='black').grid(row=index, column=0, sticky=W, pady=5)
+        index = index + 1
+
+    # Automate Preset Entry fields
+    index = 0
+    for i in default:
+        entries.append(Entry(gui))
+        entries[index].insert(0, str(i))
+        entries[index].grid(row=index, column=1, sticky=W, pady=5)
+        index = index + 1
+
+    # Save button
+    Button(gui, text="Save", command=(lambda e=entries: save(e))).grid(row=index + 1, column=1, pady=4, sticky=W)
+    gui.mainloop()
+    gui.destroy()
+
+
 # Emulator Actions
 def back(text):
     global prevNode
@@ -439,6 +498,7 @@ def back(text):
     # back() into Main menu
     if backState_h == m.state:
         print("back() into main menu, Reopening app")
+        prevNode = m
         click(m.appXCoor, m.appYCoor)
 
     # back() into same state (Activity cannot be back() - Permissions)
@@ -464,14 +524,23 @@ def back(text):
 
 def click(xCoor, yCoor):
     global prevNode
+    if prevNode.state == m.state:
+        xCoor_c = xCoor + 10
+        yCoor_c = yCoor + 10
+    else:
+        # Get XY Coordinates of the center (of clickable view)
+        xCoor_c = int((prevNode.e_clickableXCoor[prevNode.currentIndex] - xCoor)/2) + xCoor
+        yCoor_c = int((prevNode.e_clickableYCoor[prevNode.currentIndex] - yCoor)/2) + yCoor
+
+
     # Print information
-    temp = 'd.click(' + str(xCoor + 5) + ', ' + str(yCoor + 5) + ') # At '
+    temp = 'd.click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ') # At '
     info = prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[
         prevNode.currentIndex]
     print(temp + info)
 
     # Operation
-    d.click((xCoor+5), (yCoor+5))
+    d.click((xCoor_c), (yCoor_c))
     time.sleep(2)
 
     # Write to log file
@@ -483,14 +552,18 @@ def click(xCoor, yCoor):
 
 def long_click(xCoor,yCoor):
     global prevNode
+    # Get XY Coordinates of the center (of clickable view)
+    xCoor_c = int((prevNode.e_clickableXCoor[prevNode.currentIndex] - xCoor) / 2) + xCoor
+    yCoor_c = int((prevNode.e_clickableYCoor[prevNode.currentIndex] - yCoor) / 2) + yCoor
+
     # Print Information
-    temp = 'd.long_click(' + str(xCoor + 5) + ', ' + str(yCoor + 5) + ') # At '
+    temp = 'd.long_click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ') # At '
     info = prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[
         prevNode.currentIndex]
     print(temp + info)
 
     # Operation
-    d.long_click(xCoor+5, yCoor+5)
+    d.long_click(xCoor_c, yCoor_c)
     time.sleep(1.5)
 
     # Write to log file
@@ -572,7 +645,7 @@ def checkEmulator():
         print("Target Device Detected")
         return
 
-    print("Target device not connected, Abort Testing")
+    print("Target device not connected. Testing Aborted")
     sys.exit()
 
 
@@ -739,6 +812,7 @@ def checkNode():
             temp = "-Possible Crash Occurred-"
             print(temp)
             f.write("# " + temp + "\n")
+            prevNode = m
             click(m.appXCoor, m.appYCoor)
             f.write("# New Test Case \n")
 
@@ -1050,12 +1124,18 @@ def operationDecision():
         return
 
 
-# Obtain target app's name
-ipName = raw_input("Enter App Name: ")
-appName = "'content-desc': '" + str(ipName)
+# Initialise default User Inputs (Global)
+numberOfInstructions = 0
+appName = ''
+deviceName = ''
 
-# Obtain desired number of actions
-numberOfInstructions = numOfActions()
+# Override (GUI)
+try:
+    gui = Tk()
+    userInputSettings()
+except:
+    print("Settings not set. Testing Aborted.")
+    sys.exit()
 
 # Pre-Test Checks
 checkEmulator()
