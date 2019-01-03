@@ -12,9 +12,10 @@ import os
 
 
 # Possible User inputs
-chanceOfNormalClicks = 3
-chanceOfLongClicks = 4
+chanceOfNormalClicks = 4
+chanceOfLongClicks = 5
 chanceOfScroll = 3
+chanceOfSwipe = 3
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 deviceName = 'emulator-5554'
@@ -135,6 +136,8 @@ class Node:
         self.isMultiScrollable = False
         self.canScrollDown = False
         self.canScrollUp = False
+        self.canSwipeLeft = False
+        self.canSwipeRight = False
         self.scrollableX = []
         self.scrollableY = []
 
@@ -222,6 +225,8 @@ class Node:
                     self.isScrollable = True
                     self.canScrollDown = True
                     self.canScrollUp = True
+                    self.canSwipeLeft = True
+                    self.canSwipeRight = True
 
                 if len(self.scrollableX) > 1:
                     self.isMultiScrollable = True
@@ -357,6 +362,11 @@ def generateHashedState(state):
     return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
 
 
+def generateHashedHierarchy(state):
+    # Used only for identifying unique state during swiping
+    return hashlib.md5(state).digest().encode("base64")
+
+
 def setupLogFile():
     global f
     exists = os.path.isfile(tcLocation + "/testCases.py")
@@ -417,7 +427,7 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(2)
+    time.sleep(2.5)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
@@ -462,7 +472,7 @@ def click(xCoor, yCoor):
 
     # Operation
     d.click((xCoor+5), (yCoor+5))
-    time.sleep(1.5)
+    time.sleep(2)
 
     # Write to log file
     f.write(temp + info + "\n")
@@ -492,6 +502,8 @@ def long_click(xCoor,yCoor):
 
 def scroll_up():
     global prevNode
+    global selectionType
+    selectionType = "scroll"
     d(scrollable=True).swipe.down()
     d.wait.update()
     time.sleep(1.5)
@@ -504,10 +516,46 @@ def scroll_up():
 
 def scroll_down():
     global prevNode
+    global selectionType
+    # Change selection type
+    selectionType = "scroll"
+    # Operation
     d(scrollable=True).swipe.up()
     d.wait.update()
     time.sleep(1.5)
     temp = "d(scrollable=True).swipe.up() # At " + prevNode.name
+    print(temp)
+    f.write(temp + "\n")
+    f.write("d.wait.update()\n")
+    f.write("time.sleep(3)\n")
+
+
+def swipe_left():
+    global prevNode
+    global selectionType
+    # Change selection type
+    selectionType = "swipe"
+    # Operation
+    d(scrollable=True).swipe.left()
+    d.wait.update()
+    time.sleep(1.5)
+    temp = "d(scrollable=True).swipe.left() # At " + prevNode.name
+    print(temp)
+    f.write(temp + "\n")
+    f.write("d.wait.update()\n")
+    f.write("time.sleep(3)\n")
+
+
+def swipe_right():
+    global prevNode
+    global selectionType
+    # Change selection type
+    selectionType = "swipe"
+    # Operation
+    d(scrollable=True).swipe.right()
+    d.wait.update()
+    time.sleep(1.5)
+    temp = "d(scrollable=True).swipe.right() # At " + prevNode.name
     print(temp)
     f.write(temp + "\n")
     f.write("d.wait.update()\n")
@@ -813,16 +861,18 @@ def currentIndexDecision(decision):
 
 def operationDecision():
     global prevNode
+    global selectionType
     # Decision Point (Weighted Random Algorithm)
-    choice = random.choice([0] * chanceOfLongClicks + [1] * chanceOfScroll + [2] * chanceOfNormalClicks)
+    choice = random.choice(['lc'] * chanceOfLongClicks + ['sc'] * chanceOfScroll + ['c'] * chanceOfNormalClicks
+                           + ['sw'] * chanceOfSwipe)
 
     # Long Click Selected
-    if choice == 0:
+    if choice == 'lc':
         # State has no long clicks
         if prevNode.hasLongClicks is False:
             # Re-randomise
             temp = chanceOfLongClicks / 2
-            choice = random.choice([1] * (chanceOfScroll + temp) + [2] * (chanceOfNormalClicks + temp))
+            choice = random.choice(['sw'] * (chanceOfSwipe + temp) + ['c'] * (chanceOfNormalClicks + temp))
 
         # State has long clicks
         else:
@@ -833,11 +883,90 @@ def operationDecision():
             long_click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
             return
 
+    # Swipe Selected
+    if choice == 'sw':
+        # Not swipe-able, default to click
+        if prevNode.isScrollable is False:
+            choice = 'c'
+
+        # State swipe-able
+        else:
+            # Able to swipe left and right
+            if prevNode.canSwipeLeft is True and prevNode.canSwipeRight is True:
+                # Direction Decision Point
+                swipeDecision = random.randint(0, 1)
+
+                # Swipe Left decided
+                if swipeDecision == 0:
+                    # Bypass swipe errors
+                    try:
+                        pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+                        swipe_left()
+                    except:
+                        print("Cannot swipe left, no action taken")
+                        return
+
+                    # Check current Hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+
+                    # Cannot scroll up (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        prevNode.canSwipeLeft = False
+
+                    return
+
+                # Swipe Right decided
+                else:
+                    # Bypass swipe errors
+                    try:
+                        pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+                        swipe_right()
+                    except:
+                        print("Cannot swipe right, no action taken")
+                        return
+
+                    # Check current hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+                    # Cannot scroll down (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        prevNode.canSwipeRight = False
+                    return
+
+            # Able to swipe only left
+            elif prevNode.canSwipeLeft is True and prevNode.canSwipeRight is False:
+                # Bypass swipe errors
+                try:
+                    swipe_left()
+                    return
+                except:
+                    print("Cannot swipe left, click instead")
+                    # Defaults to click
+                    choice = 'c'
+
+            # Able to swipe only right
+            elif prevNode.canSwipeRight is True and prevNode.canSwipeLeft is False:
+                # Bypass swipe errors
+                try:
+                    swipe_right()
+                    return
+                except:
+                    print("Cannot swipe right, click instead")
+                    # Defaults to click
+                    choice = 'c'
+
+            # Re-enable swiping
+            else:
+                prevNode.canSwipeLeft = True
+                prevNode.canSwipeRight = True
+
+                # default to click
+                choice = 'c'
+
     # Scroll Selected
-    if choice == 1:
+    if choice == 'sc':
         # State cannot be scrolled
         if prevNode.isScrollable is False:
-            choice = 2  # Default to normal click
+            choice = 'c'  # Default to normal click
 
         # State can be scrolled
         else:
@@ -850,15 +979,17 @@ def operationDecision():
                 if scrollDecision == 0:
                     # Bypass scroll errors
                     try:
+                        pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                         scroll_up()
                     except:
                         print("Cannot scroll up, no action taken")
                         return
 
-                    # Check current state
-                    temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
+                    # Check current Hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+
                     # Cannot scroll up (Self Transition)
-                    if prevNode.state == temp:
+                    if pHierarchy == cHierarchy:
                         prevNode.canScrollUp = False
                     return
 
@@ -866,15 +997,17 @@ def operationDecision():
                 else:
                     # Bypass scroll errors
                     try:
+                        pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+
                         scroll_down()
                     except:
                         print("Cannot scroll down, no action taken")
                         return
 
-                    # Check current state
-                    temp = generateHashedState(d.dump(compressed=True).encode('utf-8'))
+                    # Check current hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                     # Cannot scroll down (Self Transition)
-                    if prevNode.state == temp:
+                    if pHierarchy == cHierarchy:
                         prevNode.canScrollDown = False
                     return
 
@@ -886,7 +1019,8 @@ def operationDecision():
                     return
                 except:
                     print("Cannot scroll down, click instead")
-                    choice = 2
+                    # Defaults to click
+                    choice = 'c'
 
             # State can only scroll up
             elif prevNode.canScrollUp is True and prevNode.canScrollDown is False:
@@ -896,10 +1030,18 @@ def operationDecision():
                     return
                 except:
                     print("Cannot scroll up, click instead")
-                    choice = 2
+                    # Defaults to click
+                    choice = 'c'
+
+            # Re-enable scrolling (For list-based views, Eg: Adding notes)
+            else:
+                prevNode.canScrollUp = True
+                prevNode.canScrollDown = True
+                # Defaults to click
+                choice = 'c'
 
     # Normal Click Selected
-    if choice == 2:
+    if choice == 'c':
         # Index decision
         prevNode.currentIndex = currentIndexDecision('click')
 
@@ -920,15 +1062,15 @@ checkEmulator()
 setupLogFile()
 
 # Initialization
-G = nx.MultiDiGraph()   # Create Visual Graph
-stateCount = 0          # Keeps track of number of States
-stateList = []          # Keeps track of states
-invalidStateList = []   # Keeps track of invalid states (No clickable views)
-crashNum = 0
-selfTransitionCount = 0
-backFlag = False
-selectionType = "click"
-lcIndex = 0
+G = nx.MultiDiGraph()       # Create Visual Graph
+stateCount = 0              # Keeps track of number of States
+stateList = []              # Keeps track of states
+invalidStateList = []       # Keeps track of invalid states (No clickable views)
+crashNum = 0                # Keeps track of number of crashes
+selfTransitionCount = 0     # Keeps track of number of self transsitions
+backFlag = False            # Skips checkNode() when back() is invoked
+selectionType = "click"     # Keeps track of current selection Type (Eg: Click, Scroll, etc)
+lcIndex = 0                 # Keeps track of current long-click index (for lcTransitionWeight[])
 
 # Setup Main Menu
 m = MainNode(d.dump(compressed=True).encode('utf-8'))
