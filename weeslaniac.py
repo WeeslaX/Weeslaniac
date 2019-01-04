@@ -653,7 +653,7 @@ def scroll_up():
               str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.e_scrollableY[prevNode.currentIndex] - 5) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n # Scroll up At "
+    temp = "d.swipe(" + strTemp + ")\n# Scroll up At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
@@ -682,7 +682,7 @@ def scroll_down():
               str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.scrollableY[prevNode.currentIndex] + 5) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n # Scroll down At "
+    temp = "d.swipe(" + strTemp + ")\n# Scroll down At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
@@ -711,7 +711,7 @@ def swipe_left():
               str(prevNode.scrollableX[prevNode.currentIndex] + 5) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n # Swipe Left At "
+    temp = "d.swipe(" + strTemp + ")\n# Swipe Left At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
@@ -740,7 +740,7 @@ def swipe_right():
               str(prevNode.e_scrollableX[prevNode.currentIndex] - 5) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n # Swipe Right At "
+    temp = "d.swipe(" + strTemp + ")\n# Swipe Right At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
