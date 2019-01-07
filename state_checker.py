@@ -88,6 +88,8 @@ def generateHashedHierachy(state):
 state1 = d.dump(compressed=True).encode('utf-8')
 time.sleep(1.5)
 
+print(state1)
+
 # Initialise all required arrays/variables
 view = []
 resourceId = []
@@ -138,7 +140,7 @@ for elem in root.iter():
         yCoordinate = int(temp[start:end])
         clickableYCoor = np.append(clickableYCoor, yCoordinate)
         # Obtain XY Coordinates of clickable Coordinates (End)
-        start = strAttrib.find(str(yCoordinate)) + len(str(yCoordinate)) + 1
+        start = strAttrib.find("[") + len(str(yCoordinate)) + len(str(xCoordinate)) + 3
         end = strAttrib.find(" '", start)
         temp = strAttrib[start:end]
         start = temp.find("[") + 1
@@ -200,7 +202,7 @@ for elem in root.iter():
         yCoordinate = int(temp[start:end])
         scrollableY.append(yCoordinate)
         # Obtain End XY Coordinates of scrollable views
-        start = strAttrib.find(str(yCoordinate)) + len(str(yCoordinate)) + 1
+        start = strAttrib.find("[") + len(str(yCoordinate)) + len(str(xCoordinate)) + 3
         end = strAttrib.find(" '", start)
         temp = strAttrib[start:end]
         start = temp.find("[") + 1

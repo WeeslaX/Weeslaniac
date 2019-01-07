@@ -21,9 +21,7 @@ from tkMessageBox import *
 # Possible User inputs
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
-ssLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/"
-tcLocation = "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"
-scrollSteps = 5
+scrollSteps = 10
 
 # Operation Weights
 chanceOfNormalClicks = 6
@@ -34,7 +32,7 @@ chanceOfSwipe = 2
 # Keyboard Weights
 enterInput = 4
 doNotEnterInput = 10 - enterInput
-closeKeyboard = 8
+closeKeyboard = 7
 doNotCloseKeyboard = 10 - closeKeyboard
 
 # Click Weights
@@ -192,7 +190,7 @@ class Node:
                 self.clickableYCoor = np.append(self.clickableYCoor, yCoordinate)
 
                 # Obtain End XY Coordinates of clickable and enabled views
-                start = strAttrib.find(str(yCoordinate)) + len(str(yCoordinate)) + 1
+                start = strAttrib.find("[") + len(str(yCoordinate)) + len(str(xCoordinate)) + 3
                 end = strAttrib.find(" '", start)
                 temp = strAttrib[start:end]
                 start = temp.find("[") + 1
@@ -252,7 +250,7 @@ class Node:
                 self.scrollableY.append(yCoordinate)
 
                 # Obtain End XY Coordinates of scrollable views
-                start = strAttrib.find(str(yCoordinate)) + len(str(yCoordinate)) + 1
+                start = strAttrib.find("[") + len(str(yCoordinate)) + len(str(xCoordinate)) + 3
                 end = strAttrib.find(" '", start)
                 temp = strAttrib[start:end]
                 start = temp.find("[") + 1
@@ -472,6 +470,8 @@ def save(entries):
     global appName
     global numberOfInstructions
     global deviceName
+    global ssLocation
+    global tcLocation
 
     # Store App Name
     appName = "'content-desc': '" + str(entries[0].get())
@@ -491,6 +491,12 @@ def save(entries):
     # Store device name
     deviceName = str(entries[2].get())
 
+    # Store Screenshot location
+    ssLocation = str(entries[3].get())
+
+    # Store test_case.py location
+    tcLocation = str(entries[4].get())
+
     showinfo("Success", "Settings Saved.")
     gui.quit()
 
@@ -498,15 +504,14 @@ def save(entries):
 def userInputSettings():
     global gui
 
-    # Bind "Enter" key to save button
-    gui.bind('<Return>', save)
-
     # Preset Values
-    label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ']
-    default = ['Omni', 500, 'emulator-5554']
+    label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
+             'test_case.py Location:']
+    default = ['Omni', 500, 'emulator-5554', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
+               "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
 
     entries = []
-
+    temp = []
     # Gui Settings
     gui.title("Settings")
     gui["bg"] = 'black'
@@ -520,13 +525,15 @@ def userInputSettings():
     # Automate Preset Entry fields
     index = 0
     for i in default:
-        entries.append(Entry(gui))
+        entries.append(Entry(gui, width=50))
         entries[index].insert(0, str(i))
         entries[index].grid(row=index, column=1, sticky=W, pady=5)
+        Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
         index = index + 1
 
     # Save button
-    Button(gui, text="Save", command=(lambda e=entries: save(e))).grid(row=index + 1, column=1, pady=4, sticky=W)
+    Button(gui, text="Save", command=(lambda e=entries: save(e)), width=10, relief="groove")\
+        .grid(row=index + 1, column=1, pady=4, sticky=W)
     gui.mainloop()
     gui.destroy()
 
@@ -536,7 +543,6 @@ def back(text):
     global prevNode
     global stateCount
     global stateList
-    global TransitionCount
     global backFlag
 
     # Set back() flag to True to skip nodeCheck
@@ -545,7 +551,7 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(2.5)
+    time.sleep(3)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
@@ -887,9 +893,9 @@ def checkNode():
 
         if selectionType == 'long-click':
             prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
-
-        selfTransitionCount = selfTransitionCount + 1
+        temp = selfTransitionCount
         back("Transition into invalid 3rd party app")
+        selfTransitionCount = temp + 1
         return
 
     # Check if state exists
@@ -1190,9 +1196,6 @@ def operationDecision():
 
             # Re-enable swiping
             else:
-                prevNode.canSwipeLeft = True
-                prevNode.canSwipeRight = True
-
                 # default to click
                 choice = 'c'
 
@@ -1299,8 +1302,6 @@ def operationDecision():
 
             # Re-enable scrolling (For list-based views, Eg: Adding notes)
             else:
-                prevNode.canScrollUp = True
-                prevNode.canScrollDown = True
                 # Defaults to click
                 choice = 'c'
 
