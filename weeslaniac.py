@@ -19,13 +19,14 @@ from tkMessageBox import *
 
 
 # Possible User inputs
+definedInvalidState = ["Jbz+aen6nEynogTh/iMQTA==\n"]    # .encode("base64") adds \n to the back
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 scrollSteps = 10
 
 # Operation Weights
 chanceOfNormalClicks = 6
-chanceOfLongClicks = 6
+chanceOfLongClicks = 3
 chanceOfScroll = 2
 chanceOfSwipe = 2
 
@@ -420,10 +421,11 @@ def generateHashedHierarchy(state):
 
 def setupLogFile():
     global f
+    global tcLocation
     exists = os.path.isfile(tcLocation + "/testCases.py")
     # File already created
     if exists:
-        print("Adding new Test Case file to " + tcLocation)
+        print("File Exists, adding new test case to " + tcLocation)
         # Use existing python test file
         f = open(tcLocation + "/testCases.py", "a")
         f.write("# New Test Case\n")
@@ -431,7 +433,7 @@ def setupLogFile():
 
     # File not created
     else:
-        print("File Exists, adding new test case.")
+        print("Creating new test case file at " + tcLocation)
         # Create new Python test file
         f = open(tcLocation + "/testCases.py", "a+")
 
@@ -507,7 +509,7 @@ def userInputSettings():
     # Preset Values
     label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
              'test_case.py Location:']
-    default = ['Omni', 500, 'emulator-5554', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
+    default = ['Tricky', 500, 'emulator-5554', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
                "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
 
     entries = []
@@ -551,7 +553,7 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(3)
+    time.sleep(3.5)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
@@ -651,7 +653,7 @@ def scroll_up():
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.e_scrollableY[prevNode.currentIndex] - 5,
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(1.5)
+    time.sleep(2)
 
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
@@ -681,7 +683,7 @@ def scroll_down():
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.scrollableY[prevNode.currentIndex] + 5,
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(1.5)
+    time.sleep(2)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -710,7 +712,7 @@ def swipe_left():
             prevNode.scrollableX[prevNode.currentIndex] + 5, prevNode.c_scrollableY[prevNode.currentIndex],
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(1.5)
+    time.sleep(2)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -739,7 +741,7 @@ def swipe_right():
             prevNode.e_scrollableX[prevNode.currentIndex] - 5, prevNode.c_scrollableY[prevNode.currentIndex],
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(1.5)
+    time.sleep(2)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -862,15 +864,14 @@ def checkNode():
     global selfTransitionCount
     global crashNum
     global lcIndex
+    global definedInvalidState
 
     stateExist = False
     index = 0
 
-    # Get current State
+    # Get hashed versions of current State
     currentState = d.dump(compressed=True).encode('utf-8')
     currentState_h = generateHashedState(currentState)
-
-    # Check current state package
     temp = checkCurrentPackage(currentState)
 
     # Check current state's package
@@ -897,6 +898,19 @@ def checkNode():
         back("Transition into invalid 3rd party app")
         selfTransitionCount = temp + 1
         return
+
+    # Check whether current state is allowed (Not in defined invalid list)
+    for i in range(len(definedInvalidState)):
+        if definedInvalidState[i] == str(currentState_h):
+            # Adjust Weights
+            if selectionType == 'click':
+                prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+
+            if selectionType == 'long-click':
+                prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
+
+            back("Transitioned into defined invalid state")
+            return
 
     # Check if state exists
     for i in range(len(stateList)):
@@ -1122,7 +1136,6 @@ def operationDecision():
                     print("Cannot swipe right, click instead")
                     choice = 'c'
 
-
         # State only has 1 swipe-able view
         elif prevNode.isScrollable is True:
             # Able to swipe left and right
@@ -1138,16 +1151,17 @@ def operationDecision():
                         prevNode.currentIndex = 0
                         swipe_left()
                     except:
-                        print("Cannot swipe left, no action taken")
+                        print("Error swiping left, no action taken")
                         numberOfInstructions = numberOfInstructions - 1
                         return
 
                     # Check current Hierarchy
                     cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
 
-                    # Cannot scroll up (Self Transition)
+                    # Cannot swipe left (Self Transition)
                     if pHierarchy == cHierarchy:
                         prevNode.canSwipeLeft = False
+                        print("Cannot Swipe Left")
 
                     return
 
@@ -1159,26 +1173,37 @@ def operationDecision():
                         prevNode.currentIndex = 0
                         swipe_right()
                     except:
-                        print("Cannot swipe right, no action taken")
+                        print("Error swiping right, no action taken")
                         numberOfInstructions = numberOfInstructions - 1
                         return
 
                     # Check current hierarchy
                     cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
-                    # Cannot scroll down (Self Transition)
+                    # Cannot swipe right (Self Transition)
                     if pHierarchy == cHierarchy:
                         prevNode.canSwipeRight = False
+                        print("Cannot swipe right")
                     return
 
             # Able to swipe only left
             elif prevNode.canSwipeLeft is True and prevNode.canSwipeRight is False:
                 # Bypass swipe errors
                 try:
+                    pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                     prevNode.currentIndex = 0
                     swipe_left()
+                    # Check current Hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+
+                    # Cannot swipe left (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        print("Reached Right most view, re-enable swipe-right")
+                        prevNode.canSwipeLeft = False
+                        prevNode.canSwipeRight = True
+
                     return
                 except:
-                    print("Cannot swipe left, click instead")
+                    print("Error swiping left, click instead")
                     # Defaults to click
                     choice = 'c'
 
@@ -1186,15 +1211,24 @@ def operationDecision():
             elif prevNode.canSwipeRight is True and prevNode.canSwipeLeft is False:
                 # Bypass swipe errors
                 try:
+                    pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                     prevNode.currentIndex = 0
                     swipe_right()
+                    # Check current Hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+
+                    # Cannot swipe right (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        print("Reached Left-most view, re-enable swipe left")
+                        prevNode.canSwipeRight = False
+                        prevNode.canSwipeLeft = True
                     return
                 except:
                     print("Cannot swipe right, click instead")
                     # Defaults to click
                     choice = 'c'
 
-            # Re-enable swiping
+            # Unable to swipe left or right, click instead
             else:
                 # default to click
                 choice = 'c'
@@ -1247,7 +1281,8 @@ def operationDecision():
                         prevNode.currentIndex = 0
                         scroll_up()
                     except:
-                        print("Cannot scroll up, no action taken")
+                        print("Error scrolling up, no action taken")
+                        numberOfInstructions = numberOfInstructions - 1
                         return
 
                     # Check current Hierarchy
@@ -1256,6 +1291,7 @@ def operationDecision():
                     # Cannot scroll up (Self Transition)
                     if pHierarchy == cHierarchy:
                         prevNode.canScrollUp = False
+                        print("Cannot scroll up")
                     return
 
                 # Scroll down decided
@@ -1266,7 +1302,8 @@ def operationDecision():
                         prevNode.currentIndex = 0
                         scroll_down()
                     except:
-                        print("Cannot scroll down, no action taken")
+                        print("Error scrolling down, no action taken")
+                        numberOfInstructions = numberOfInstructions - 1
                         return
 
                     # Check current hierarchy
@@ -1274,17 +1311,27 @@ def operationDecision():
                     # Cannot scroll down (Self Transition)
                     if pHierarchy == cHierarchy:
                         prevNode.canScrollDown = False
+                        print("Cannot scroll down")
+
                     return
 
             # State can only scroll down
             elif prevNode.canScrollDown is True and prevNode.canScrollUp is False:
                 # Bypass scroll errors
                 try:
+                    pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                     prevNode.currentIndex = 0
                     scroll_down()
+                    # Check current hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+                    # Cannot scroll down (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        prevNode.canScrollDown = False
+                        prevNode.canScrollUp = True
+                        print("Reached bottom, re-enable scroll up")
                     return
                 except:
-                    print("Cannot scroll down, click instead")
+                    print("Error scrolling down, click instead")
                     # Defaults to click
                     choice = 'c'
 
@@ -1292,15 +1339,23 @@ def operationDecision():
             elif prevNode.canScrollUp is True and prevNode.canScrollDown is False:
                 # Bypass scroll errors
                 try:
+                    pHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
                     prevNode.currentIndex = 0
                     scroll_up()
+                    # Check current hierarchy
+                    cHierarchy = generateHashedHierarchy(d.dump(compressed=True).encode('utf-8'))
+                    # Cannot scroll down (Self Transition)
+                    if pHierarchy == cHierarchy:
+                        prevNode.canScrollDown = True
+                        prevNode.canScrollUp = False
+                        print("Reached top, re-enable scroll down")
                     return
                 except:
-                    print("Cannot scroll up, click instead")
+                    print("Error scrolling up, click instead")
                     # Defaults to click
                     choice = 'c'
 
-            # Re-enable scrolling (For list-based views, Eg: Adding notes)
+            # State cannot scroll up or down
             else:
                 # Defaults to click
                 choice = 'c'

@@ -88,8 +88,6 @@ def generateHashedHierachy(state):
 state1 = d.dump(compressed=True).encode('utf-8')
 time.sleep(1.5)
 
-print(state1)
-
 # Initialise all required arrays/variables
 view = []
 resourceId = []
@@ -229,7 +227,6 @@ for elem in root.iter():
 
 # Logic used for scrolling/swiping
 if len(scrollableX) >= 1:
-    print(len(scrollableX))
     # Obtain center of scrollable views
     for n in range(len(scrollableX)):
         # X-Center coordinates
@@ -305,5 +302,5 @@ for i in longClickable:
         count = count+1
 print("Number of long-clickable views:" + str(count))
 
-# Add your operations here (
+# Add your operations here:
 
