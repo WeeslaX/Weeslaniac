@@ -19,13 +19,13 @@ from tkMessageBox import *
 
 
 # Possible User inputs
-definedInvalidState = ["Jbz+aen6nEynogTh/iMQTA==\n"]    # .encode("base64") adds \n to the back
+definedInvalidState = ["0RgeA6iQVV5U2UkI+0r1GA==\n"]    # .encode("base64") adds \n to the back
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 scrollSteps = 10
 
 # Operation Weights
-chanceOfNormalClicks = 6
+chanceOfNormalClicks = 12
 chanceOfLongClicks = 3
 chanceOfScroll = 2
 chanceOfSwipe = 2
@@ -509,7 +509,7 @@ def userInputSettings():
     # Preset Values
     label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
              'test_case.py Location:']
-    default = ['Tricky', 500, 'emulator-5554', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
+    default = ['Tricky', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
                "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
 
     entries = []
@@ -553,7 +553,7 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(3.5)
+    time.sleep(2.5)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
@@ -572,6 +572,8 @@ def back(text):
     if backState_h == prevNode.state:
         # Click on the first clickable object to exit
         d(clickable=True).click()
+        f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
+        print("Within a state that cannot be back()")
 
     # back() to known state
     for i in range(len(stateList)):
@@ -796,6 +798,10 @@ def checkKeyboard():
             f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
             f.write("time.sleep(1.5)\n")
 
+        # Did not input any text
+        else:
+            print("Did not input text.")
+
         # Decision to open/close keyboard
         decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
 
@@ -874,6 +880,9 @@ def checkNode():
     currentState_h = generateHashedState(currentState)
     temp = checkCurrentPackage(currentState)
 
+    # Check if app has crashed
+    checkCrash(currentState_h)
+
     # Check current state's package
     if temp != m.package:
         # Current state package is empty
@@ -888,18 +897,33 @@ def checkNode():
             back("Transition into state with no package name")
             return
 
-        # Current state package belongs to 3rd party
-        if selectionType == 'click':
-                prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+        # Current state package is "android" - Possible crash
+        if temp == 'android':
+            # back() out of error message
+            d.press.back()
+            d.wait.update()
+            time.sleep(2)
+            f.write("d.press.back() # Possible Crash Detected\n")
+            f.write("d.wait.update()\n")
+            f.write("time.sleep(3)\n")
+            print("d.press.back() - Possible Crash Detected")
+            # Check if app has crashed
+            checkCrash(currentState_h)
 
-        if selectionType == 'long-click':
-            prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
-        temp = selfTransitionCount
-        back("Transition into invalid 3rd party app")
-        selfTransitionCount = temp + 1
-        return
+        # Current state package belongs to unapproved 3rd party
+        else:
+            if selectionType == 'click':
+                    prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
 
-    # Check whether current state is allowed (Not in defined invalid list)
+            if selectionType == 'long-click':
+                prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
+
+            temp = selfTransitionCount
+            back("Transition into invalid 3rd party app")
+            selfTransitionCount = temp + 1
+            return
+
+    # Check if current state is allowed (Not in defined invalid list)
     for i in range(len(definedInvalidState)):
         if definedInvalidState[i] == str(currentState_h):
             # Adjust Weights
@@ -934,49 +958,8 @@ def checkNode():
         return
     # Transition to existing state
     else:
-        # Transition to main menu, possible Crash
-        if currentState_h == m.state:
-
-            # Adjust weights of previous node's index
-            if selectionType == 'click':
-                prevNode.cTransitionWeight[prevNode.currentIndex] = crashWeight
-
-            if selectionType == 'long-click':
-                prevNode.lcTransitionWeight[lcIndex] = crashWeight
-
-            # Update number of possible crash
-            crashNum = crashNum + 1
-            temp = "-Possible Crash Occurred-"
-            print(temp)
-            f.write("# " + temp + "\n")
-            prevNode = m
-            click(m.appXCoor, m.appYCoor)
-            f.write("# New Test Case \n")
-
-            # Get state after opening app
-            y = d.dump(compressed=True).encode('utf-8')
-            y_h = generateHashedState(y)
-
-            # If Main Activity after opening app
-            if stateList[0].state == y_h:
-                prevNode = stateList[0]
-                print("Returned to S0 after possible crash")
-                return
-            else:
-                # If existing state after opening app
-                for n in stateList:
-                    if n.state == y_h:
-                        prevNode = n
-                        print("Returned to " + n.name + " after possible crash")
-                        return
-
-                # If new state after opening app
-                addNode(y)  # New node will be represented as prevNode
-                print("Returned to new state after possible crash")
-                return
-
         # Self Transition
-        elif currentState_h == prevNode.state:
+        if currentState_h == prevNode.state:
             # Adjust weights of previous node's index
             if selectionType == 'click':
                 prevNode.cTransitionWeight[prevNode.currentIndex] = selfTransitionWeight
@@ -1029,6 +1012,30 @@ def checkNode():
             print(temp)
             f.write("#" + temp + "\n")
             return
+
+
+def checkCrash(currentState):
+    global prevNode
+    global crashNum
+    global selectionType
+    global crashWeight
+    # Check if app has crashed
+    if currentState == m.state:
+        # Adjust weights of previous node's index
+        if selectionType == 'click':
+            prevNode.cTransitionWeight[prevNode.currentIndex] = crashWeight
+
+        if selectionType == 'long-click':
+            prevNode.lcTransitionWeight[lcIndex] = crashWeight
+
+        # Update number of possible crash
+        crashNum = crashNum + 1
+        temp = "-Possible Crash Occurred-"
+        print(temp)
+        f.write("# " + temp + "\n")
+        prevNode = m
+        click(m.appXCoor, m.appYCoor)
+        f.write("# New Test Case \n")
 
 
 def currentIndexDecision(decision):
@@ -1397,6 +1404,7 @@ selfTransitionCount = 0     # Keeps track of number of self transsitions
 backFlag = False            # Skips checkNode() when back() is invoked
 selectionType = "click"     # Keeps track of current selection Type (Eg: Click, Scroll, etc)
 lcIndex = 0                 # Keeps track of current long-click index (for lcTransitionWeight[])
+sTime = time.time()         # Store start time, should be the last line of initialization
 
 # Setup Main Menu
 m = MainNode(d.dump(compressed=True).encode('utf-8'))
@@ -1432,13 +1440,20 @@ while instCount < numberOfInstructions:
     # Instruction Counter
     instCount = instCount + 1
 
-# Exiting from Test
+# Exiting from App
 d.press.home()
 d.wait.update()
+
+# Obtain elapsed tme
+eTime = time.time() - sTime
+
+# Update console and log
 print("End Test Case, Number of crashes detected: " + str(crashNum))
 print("Total Actions: " + str(numberOfInstructions))
+print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
 f.write("d.press.home()\n")
 f.write("# -End Test Case-\n")
-f.write("#-Number of crashes detected: " + str(crashNum) + "\n")
+f.write("# -Number of crashes detected: " + str(crashNum) + "\n")
+f.write("# Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
 f.close()
 
