@@ -19,16 +19,16 @@ from tkMessageBox import *
 
 
 # Possible User inputs
-definedInvalidState = ["0RgeA6iQVV5U2UkI+0r1GA==\n"]    # .encode("base64") adds \n to the back
+definedInvalidState = [""]    # .encode("base64") adds \n to the back 0RgeA6iQVV5U2UkI+0r1GA==\n
 selfTransitionLimit = 6
 inputText = '987abc'        # Enhancement: User input list
 scrollSteps = 10
 
 # Operation Weights
-chanceOfNormalClicks = 12
-chanceOfLongClicks = 3
-chanceOfScroll = 2
-chanceOfSwipe = 2
+chanceOfNormalClicks = 1
+chanceOfLongClicks = 1
+chanceOfScroll = 1
+chanceOfSwipe = 1
 
 # Keyboard Weights
 enterInput = 4
@@ -36,14 +36,15 @@ doNotEnterInput = 10 - enterInput
 closeKeyboard = 7
 doNotCloseKeyboard = 10 - closeKeyboard
 
-# Click Weights
+# Static Weights
 defaultWeight = 40
-newStateWeight = 10
+baseWeight = 5
 selfTransitionWeight = 2
+crashWeight = 2
 invalidTransitionWeight = 1
 noPackageWeight = 1
-childParentTransitionWeight = 5
-crashWeight = 2
+notAllowedWeight = 1
+noClickableViewWeight = 1
 
 
 # Data Structures
@@ -131,6 +132,8 @@ class Node:
         # Click Attributes
         self.views = []
         self.resourceId = []
+        self.cVisitFreq = []
+        self.lcVisitFreq = []
         self.clickableXCoor = np.array([], dtype=int)
         self.clickableYCoor = np.array([], dtype=int)
         self.e_clickableXCoor = np.array([], dtype=int)
@@ -225,6 +228,10 @@ class Node:
                 # Has resource-id
                 else:
                     self.resourceId.append(temp)
+
+                # Update cVisitFreq List
+                self.cVisitFreq.append(0)
+
                 # View is long-clickable
                 if longClickCondition in strAttrib:
                     self.longClickable.append(longClickIndex)
@@ -232,6 +239,8 @@ class Node:
                     self.lcTransitionWeight.append(defaultWeight)
                     # Long clicks Present
                     self.hasLongClicks = True
+                    # Update lcVisitFreq List
+                    self.lcVisitFreq.append(0)
 
                 longClickIndex = longClickIndex + 1
 
@@ -307,7 +316,7 @@ class Node:
                 temp = (((self.e_scrollableY[i]-self.scrollableY[i])/2) + self.scrollableY[i])
                 self.c_scrollableY.append(temp)
 
-        # Get number of clickable objects
+        # Get number of clickable views
         self.clickableLength = len(self.clickableXCoor)
 
         # No clickable views
@@ -342,14 +351,14 @@ class Node:
             # Screen shot of State
             d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
 
-            # Add and Display with matlibplot
-            # plt.clf()  # Clear previous graph
-            # G.add_edges_from([(prevNode.name, self.name)])
-            # pos = nx.spring_layout(G)
-            # nx.draw_networkx(G, pos, node_color='g', node_size=1000)
-            # plt.axis('off')
-            # plt.draw()
-            # plt.pause(1)
+        # Add and Display with matlibplot
+        # plt.clf()  # Clear previous graph
+        # G.add_edges_from([(prevNode.name, self.name)])
+        # pos = nx.spring_layout(G)
+        # nx.draw_networkx(G, pos, node_color='g', node_size=1000)
+        # plt.axis('off')
+        # plt.draw()
+        # plt.pause(1)
 
 
 # Misc
@@ -422,6 +431,7 @@ def generateHashedHierarchy(state):
 def setupLogFile():
     global f
     global tcLocation
+    global appName
     exists = os.path.isfile(tcLocation + "/testCases.py")
     # File already created
     if exists:
@@ -429,6 +439,7 @@ def setupLogFile():
         # Use existing python test file
         f = open(tcLocation + "/testCases.py", "a")
         f.write("# New Test Case\n")
+        f.write("# Target App: " + str(appName) + "\n")
         f.write("# Target: " + str(numberOfInstructions) + " actions\n")
 
     # File not created
@@ -442,22 +453,49 @@ def setupLogFile():
         f.write("import time\n")
         f.write("import subprocess\n\n")
         f.write("# New Test Case\n")
-        f.write("# Target: " + str(numberOfInstructions) + " actions\n")
+        f.write("# Target App: " + str(appName) + "\n")
+        f.write("# Number of actions: " + str(numberOfInstructions) + "\n")
 
 
 def addNode(state):
     global stateCount
     global prevNode
     global stateList
+    global selectionType
+    global baseWeight
+    global noClickableViewWeight
+    global lcIndex
+
     x = Node('S' + str(stateCount), state, (prevNode.depth + 1))
     stateList.append(x)
 
     # New state does not have any clickable views
     if stateList[stateCount].noClickableView is True:
         stateCount = stateCount + 1
+
+        # Adjust previous node's weights and # of visits
+        if selectionType == 'click':
+            prevNode.cVisitFreq[prevNode.currentIndex] += 1
+            prevNode.cTransitionWeight[prevNode.currentIndex] = noClickableViewWeight
+
+        if selectionType == 'long-click':
+            prevNode.lcVisitFreq[lcIndex] += 1
+            prevNode.lcTransitionWeight[lcIndex] = noClickableViewWeight
+
         print("New node no clickable views")
         back("New node no clickable Views")
         return
+
+    # (Normal Operation) Adjust previous node's weights and # of visits
+    if selectionType == 'click':
+        prevNode.cVisitFreq[prevNode.currentIndex] += 1
+        prevNode.cTransitionWeight[prevNode.currentIndex] = baseWeight + x.clickableLength + \
+                                                            len(x.longClickable) + len(x.scrollableX)
+
+    if selectionType == 'long-click':
+        prevNode.lcVisitFreq[lcIndex] += 1
+        prevNode.lcTransitionWeight[lcIndex] = baseWeight + x.clickableLength + \
+                                                            len(x.longClickable) + len(x.scrollableX)
 
     # New State that has clickable views
     prevNode = stateList[stateCount]
@@ -546,9 +584,12 @@ def back(text):
     global stateCount
     global stateList
     global backFlag
+    global selectionType
 
     # Set back() flag to True to skip nodeCheck
     backFlag = True
+
+    # Set selection type
 
     # Operation
     d.press.back()
@@ -567,6 +608,15 @@ def back(text):
         print("back() into main menu, Reopening app")
         prevNode = m
         click(m.appXCoor, m.appYCoor)
+        # Re-obtain current state
+        backState = d.dump(compressed=True).encode('utf-8')
+        backState_h = generateHashedState(backState)
+
+    # back() into 3rd party app
+    package = checkCurrentPackage(backState)
+    if package != m.package:
+        back("Still in 3rd party app")
+        return
 
     # back() into same state (Activity cannot be back() - Permissions)
     if backState_h == prevNode.state:
@@ -574,6 +624,10 @@ def back(text):
         d(clickable=True).click()
         f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
         print("Within a state that cannot be back()")
+
+        # Obtain new state
+        backState = d.dump(compressed=True).encode('utf-8')
+        backState_h = generateHashedState(backState)
 
     # back() to known state
     for i in range(len(stateList)):
@@ -585,6 +639,7 @@ def back(text):
 
     # back() to unknown state, Add new node
     msg = "back() into Unknown State"
+    selectionType = 'back'
     print(msg)
     f.write("#" + msg + "\n")
     addNode(backState)
@@ -807,7 +862,7 @@ def checkKeyboard():
 
         # Close Keyboard
         if decisionClose == 0:
-            # Via back button (use nodeCheck() to ascertain state)
+            # Manual back() (use nodeCheck() to ascertain state)
             d.press.back()
             d.wait.update()
             text = "Close Keyboard"
@@ -863,6 +918,25 @@ def checkCurrentPackage(state):
     return ''
 
 
+def checkUnvisitedView(node):
+    total = 0
+
+    # Check unvisited clickable view
+    for i in range(len(node.cVisitFreq)):
+        if node.cVisitFreq[i] == 0:
+            total += 1
+
+    # Check unvisited longclickable view
+    for i in range(len(node.lcVisitFreq)):
+        if node.lcVisitFreq[i] == 0:
+            total += 1
+
+    # Check # of scrollable views
+    total += len(node.scrollableX)
+
+    return total
+
+
 def checkNode():
     global stateList
     global prevNode
@@ -871,9 +945,7 @@ def checkNode():
     global crashNum
     global lcIndex
     global definedInvalidState
-
-    stateExist = False
-    index = 0
+    global notAllowedWeight
 
     # Get hashed versions of current State
     currentState = d.dump(compressed=True).encode('utf-8')
@@ -881,7 +953,8 @@ def checkNode():
     temp = checkCurrentPackage(currentState)
 
     # Check if app has crashed
-    checkCrash(currentState_h)
+    if checkCrash(currentState_h) is True:
+        return
 
     # Check current state's package
     if temp != m.package:
@@ -889,9 +962,11 @@ def checkNode():
         if temp == '':
             # Adjust weights of previous node's index based on selection type
             if selectionType == 'click':
+                prevNode.cVisitFreq[prevNode.currentIndex] += 1
                 prevNode.cTransitionWeight[prevNode.currentIndex] = noPackageWeight
 
             if selectionType == 'long-click':
+                prevNode.lcVisitFreq[lcIndex] += 1
                 prevNode.lcTransitionWeight[lcIndex] = noPackageWeight
 
             back("Transition into state with no package name")
@@ -899,7 +974,7 @@ def checkNode():
 
         # Current state package is "android" - Possible crash
         if temp == 'android':
-            # back() out of error message
+            # Manual back() out of error message
             d.press.back()
             d.wait.update()
             time.sleep(2)
@@ -908,35 +983,46 @@ def checkNode():
             f.write("time.sleep(3)\n")
             print("d.press.back() - Possible Crash Detected")
             # Check if app has crashed
-            checkCrash(currentState_h)
+            if checkCrash(currentState_h) is True:
+                return
 
         # Current state package belongs to unapproved 3rd party
         else:
             if selectionType == 'click':
-                    prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+                prevNode.cVisitFreq[prevNode.currentIndex] += 1
+                prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
 
             if selectionType == 'long-click':
+                prevNode.lcVisitFreq[lcIndex] += 1
                 prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
 
-            temp = selfTransitionCount
+            # prevNode updated in back()
             back("Transition into invalid 3rd party app")
-            selfTransitionCount = temp + 1
+
+            # Update Self transition count
+            selfTransitionCount += 1
             return
+
 
     # Check if current state is allowed (Not in defined invalid list)
     for i in range(len(definedInvalidState)):
         if definedInvalidState[i] == str(currentState_h):
             # Adjust Weights
             if selectionType == 'click':
-                prevNode.cTransitionWeight[prevNode.currentIndex] = invalidTransitionWeight
+                prevNode.cVisitFreq[prevNode.currentIndex] += 1
+                prevNode.cTransitionWeight[prevNode.currentIndex] = notAllowedWeight
 
             if selectionType == 'long-click':
-                prevNode.lcTransitionWeight[lcIndex] = invalidTransitionWeight
+                prevNode.lcVisitFreq[lcIndex] += 1
+                prevNode.lcTransitionWeight[lcIndex] = notAllowedWeight
 
             back("Transitioned into defined invalid state")
             return
 
     # Check if state exists
+    stateExist = False
+    index = 0
+
     for i in range(len(stateList)):
         if currentState_h == stateList[i].state:
             stateExist = True
@@ -946,25 +1032,21 @@ def checkNode():
 
     # Transition to new state
     if stateExist is False:
-        # Adjust weights of previous node's index
-        if selectionType == 'click':
-            prevNode.cTransitionWeight[prevNode.currentIndex] = newStateWeight
-
-        if selectionType == 'long-click':
-            prevNode.lcTransitionWeight[lcIndex] = newStateWeight
-
         # Add new state
         addNode(currentState)
         return
+
     # Transition to existing state
     else:
         # Self Transition
         if currentState_h == prevNode.state:
             # Adjust weights of previous node's index
             if selectionType == 'click':
+                prevNode.cVisitFreq[prevNode.currentIndex] += 1
                 prevNode.cTransitionWeight[prevNode.currentIndex] = selfTransitionWeight
 
             if selectionType == 'long-click':
+                prevNode.lcVisitFreq[lcIndex] += 1
                 prevNode.lcTransitionWeight[lcIndex] = selfTransitionWeight
 
             # Add self transition count
@@ -972,45 +1054,39 @@ def checkNode():
             temp = "Self Transition in " + prevNode.name
             print(temp)
             f.write("# " + temp + "\n")
+
+            # prevNode stays the same
             return
 
-        # Transition to known state
+        # Transition to another known state
         else:
-            # Transition from Child state to parent state
-            if stateList[index].depth < prevNode.depth:
-                # Adjust weights of previous node's index
+            # Transition between known states, check if prevNode is NOT main menu
+            if prevNode.state != m.state:
+                # Adjust weights of previous node's index (TBC..)
                 if selectionType == 'click':
-                    prevNode.cTransitionWeight[prevNode.currentIndex] = childParentTransitionWeight
+                    prevNode.cVisitFreq[prevNode.currentIndex] += 1
+                    # Obtain total # of unvisited clickable views
+                    uTotal = checkUnvisitedView(stateList[index])
+                    prevNode.cTransitionWeight[prevNode.currentIndex] = baseWeight + uTotal
 
                 if selectionType == 'long-click':
-                    prevNode.lcTransitionWeight[lcIndex] = childParentTransitionWeight
+                    prevNode.lcVisitFreq[lcIndex] += 1
+                    # Obtain total # of unvisited clickable views
+                    uTotal = checkUnvisitedView(stateList[index])
+                    prevNode.lcTransitionWeight[lcIndex] = baseWeight + uTotal
 
-                # Reset Self Transition Count
-                selfTransitionCount = 0
-                temp = "Transition from " + prevNode.name + "(" + str(prevNode.depth) + ") to " + stateList[
-                    i].name + "(" + str(stateList[i].depth) + ")"
-                print(temp)
-                f.write("# " + temp + "\n")
-                prevNode = stateList[index]
-                return
+            # Reset self transition flag
+            selfTransitionCount = 0
 
-            # Transition from parent state to child state
-            if stateList[index].depth > prevNode.depth:
-                # Reset Self Transition Count
-                selfTransitionCount = 0
-                temp = "Transition from " + prevNode.name + "(" + str(prevNode.depth) + ") to " + stateList[
-                    i].name + "(" + str(stateList[i].depth) + ")"
-                print(temp)
-                f.write("# " + temp + "\n")
-                prevNode = stateList[index]
-                return
-
-            # Transition between states with same depth
-            selfTransitionCount = selfTransitionCount + 1
+            # Update Log file and display information
             temp = "Transition from " + prevNode.name + "(" + str(prevNode.depth) + ") to " + stateList[
-                i].name + "(" + str(stateList[i].depth) + ")"
+                index].name + "(" + str(stateList[index].depth) + ")"
             print(temp)
-            f.write("#" + temp + "\n")
+            f.write("# " + temp + "\n")
+
+            # Set current node as prevNode
+            prevNode = stateList[index]
+
             return
 
 
@@ -1019,13 +1095,17 @@ def checkCrash(currentState):
     global crashNum
     global selectionType
     global crashWeight
+    global stateList
+
     # Check if app has crashed
     if currentState == m.state:
         # Adjust weights of previous node's index
         if selectionType == 'click':
+            prevNode.cVisitFreq[prevNode.currentIndex] += 1
             prevNode.cTransitionWeight[prevNode.currentIndex] = crashWeight
 
         if selectionType == 'long-click':
+            prevNode.lcVisitFreq[lcIndex] += 1
             prevNode.lcTransitionWeight[lcIndex] = crashWeight
 
         # Update number of possible crash
@@ -1036,6 +1116,28 @@ def checkCrash(currentState):
         prevNode = m
         click(m.appXCoor, m.appYCoor)
         f.write("# New Test Case \n")
+
+        # Obtain current state after reopening app
+        c_currentState = d.dump(compressed=True).encode('utf-8')
+        c_currentState_h = generateHashedState(currentState)
+
+        # Open App into known state
+        for i in range(len(stateList)):
+            # If back() to known state
+            if c_currentState_h == stateList[i].state:
+                print("Open app into Existing State: " + stateList[i].name)
+                prevNode = stateList[i]
+                return True
+
+        # Open app into unknown state, Add new node
+        msg = "Open app into Unknown State"
+        selectionType = 'invalid'
+        print(msg)
+        f.write("#" + msg + "\n")
+        addNode(c_currentState)
+        return True
+
+    return False
 
 
 def currentIndexDecision(decision):
@@ -1454,6 +1556,6 @@ print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
 f.write("d.press.home()\n")
 f.write("# -End Test Case-\n")
 f.write("# -Number of crashes detected: " + str(crashNum) + "\n")
-f.write("# Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
+f.write("# Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))) + "\n")
 f.close()
 

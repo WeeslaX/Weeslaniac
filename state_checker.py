@@ -95,10 +95,12 @@ clickableXCoor = np.array([])
 clickableYCoor = np.array([])
 eClickableXCoor = np.array([])
 eClickableYCoor = np.array([])
+cVisitFreq = []
 package = ''
 state = ''
 longClickable = []
 longClickableIndex = []
+lcVisitFreq = []
 scrollableX = []
 scrollableY = []
 e_scrollableX = []
@@ -177,10 +179,14 @@ for elem in root.iter():
         else:
             text.append(temp)
 
+        # Update cVisitFreq
+        cVisitFreq.append(0)
+
         # Long clickable
         if condition2 in strAttrib:
             longClickable.append(str(True))
             longClickableIndex.append(longClickIndex)
+            lcVisitFreq.append(0)
         else:
             longClickable.append(str(False))
         longClickIndex = longClickIndex + 1
@@ -265,6 +271,9 @@ print("Clickable XY coordinates (bottom-right bounds)")
 print(eClickableXCoor)
 print(eClickableYCoor)
 print("\n")
+print("Clickable # of visits")
+print(cVisitFreq)
+print("\n")
 
 # Long-clickable views
 print("Long Clickable indexes")
@@ -273,6 +282,10 @@ print(longClickable)
 # Refers to index of clickable XY coordinates that are also long-clickable
 print(longClickableIndex)
 print("\n")
+print("Long-clickable # of visits")
+print(lcVisitFreq)
+print("\n")
+
 
 print("Scrollable views Details")
 # XY Coordinates of scrollable views (Top-left)
