@@ -19,10 +19,11 @@ from tkMessageBox import *
 
 
 # Possible User inputs
-definedInvalidState = [""]    # .encode("base64") adds \n to the back 0RgeA6iQVV5U2UkI+0r1GA==\n
+definedInvalidState = [""]       # .encode("base64") adds \n to the back 0RgeA6iQVV5U2UkI+0r1GA==\n
 selfTransitionLimit = 6
-inputText = '987abc'        # Enhancement: User input list
+inputText = '987abc'             # Enhancement: User input list
 scrollSteps = 10
+alwaysAllowPermissions = True    # False implies always deny permissions
 
 # Operation Weights
 chanceOfNormalClicks = 1
@@ -363,11 +364,15 @@ class Node:
 
 # Misc
 def generateHashedState(state):
+    global permissionState
     # Conditions
     clickCondition = "'clickable': 'true'"
     enabledCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
     scrollCondition = "'text': 'true'"
+    allowPermissionsId = 'com.android.packageinstaller:id/permission_allow_button'
+    denyPermissionsId = 'com.android.packageinstaller:id/permission_deny_button'
+
     # Attributes
     resourceId = ''
     view = ''
@@ -418,6 +423,11 @@ def generateHashedState(state):
         # Determine if scrollable
         if scrollCondition in strAttrib and enabledCondition in strAttrib:
             scroll = scroll + 'True'
+
+    # Check if state is a permission state
+    if resourceId == str(denyPermissionsId+allowPermissionsId):
+        print("Permission state detected.")
+        permissionState = True
 
     # Return Hash
     return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
@@ -946,20 +956,48 @@ def checkNode():
     global lcIndex
     global definedInvalidState
     global notAllowedWeight
+    global permissionState
+    global alwaysAllowPermissions
 
     # Get hashed versions of current State
     currentState = d.dump(compressed=True).encode('utf-8')
     currentState_h = generateHashedState(currentState)
-    temp = checkCurrentPackage(currentState)
+
+    # Check if current state is permission State
+    if permissionState is True:
+
+        # User set to always allow permissions
+        if alwaysAllowPermissions is True:
+            d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()
+            temp = "d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()"
+            print(temp)
+            f.write(temp + "\n")
+            f.write("# Permission State detected, 'Allow' selected\n")
+
+        # User set to always deny permissions
+        else:
+            d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()
+            temp = "d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()"
+            print(temp)
+            f.write(temp + "\n")
+            f.write("# Permission State detected, 'Deny' selected\n")
+
+        # Reset Flag
+        permissionState = False
+
+        # Reset current state
+        currentState = d.dump(compressed=True).encode('utf-8')
+        currentState_h = generateHashedState(currentState)
 
     # Check if app has crashed
     if checkCrash(currentState_h) is True:
         return
 
     # Check current state's package
-    if temp != m.package:
+    c_package = checkCurrentPackage(currentState)
+    if c_package != m.package:
         # Current state package is empty
-        if temp == '':
+        if c_package == '':
             # Adjust weights of previous node's index based on selection type
             if selectionType == 'click':
                 prevNode.cVisitFreq[prevNode.currentIndex] += 1
@@ -973,7 +1011,7 @@ def checkNode():
             return
 
         # Current state package is "android" - Possible crash
-        if temp == 'android':
+        if c_package == 'android':
             # Manual back() out of error message
             d.press.back()
             d.wait.update()
@@ -1504,6 +1542,7 @@ invalidStateList = []       # Keeps track of invalid states (No clickable views)
 crashNum = 0                # Keeps track of number of crashes
 selfTransitionCount = 0     # Keeps track of number of self transsitions
 backFlag = False            # Skips checkNode() when back() is invoked
+permissionState = False     # Keeps track of whether current state is permission state
 selectionType = "click"     # Keeps track of current selection Type (Eg: Click, Scroll, etc)
 lcIndex = 0                 # Keeps track of current long-click index (for lcTransitionWeight[])
 sTime = time.time()         # Store start time, should be the last line of initialization

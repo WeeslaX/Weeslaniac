@@ -25,6 +25,8 @@ def generateHashedState(state):
     enabledCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
     scrollCondition = "'text': 'true'"
+    allowPermissionsId = 'com.android.packageinstaller:id/permission_allow_button'
+    denyPermissionsId = 'com.android.packageinstaller:id/permission_deny_button'
     # Attributes
     resourceId = ''
     view = ''
@@ -75,6 +77,10 @@ def generateHashedState(state):
         # Determine if scrollable
         if scrollCondition in strAttrib and enabledCondition in strAttrib:
             scroll = scroll + 'True'
+
+    # Check if state is a permission state
+    if resourceId == str(denyPermissionsId+allowPermissionsId):
+        print("This is a permission state")
 
     # Return Hash
     return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
@@ -241,6 +247,7 @@ if len(scrollableX) >= 1:
         # Y-Center coordinates
         temp = (((e_scrollableY[n] - scrollableY[n]) / 2) + scrollableY[n])
         c_scrollableY.append(temp)
+
 
 # Use MD5 hashing to speed up state matching process
 print("Hashed Hierarchy")
