@@ -9,7 +9,6 @@ import networkx as nx
 import subprocess
 from uiautomator import device as d
 import numpy as np
-import sys
 import time
 import hashlib
 import random
@@ -19,11 +18,14 @@ from tkMessageBox import *
 
 
 # Possible User inputs
-definedInvalidState = [""]       # .encode("base64") adds \n to the back 0RgeA6iQVV5U2UkI+0r1GA==\n
-selfTransitionLimit = 6
-inputText = '987abc'             # Enhancement: User input list
-scrollSteps = 10
-alwaysAllowPermissions = True    # False implies always deny permissions
+definedInvalidState = [""]          # Keeps track of user defined invalid states, Eg: 0RgeA6iQVV5U2UkI+0r1GA==\n
+selfTransitionLimit = 8             # Stores self transition limit to avoid getting stuck in one activity
+inputNum = '98'                     # Numerical half of inputText
+inputAlpha = 'ab'                   # Alphabetical half of inputText
+inputText = inputNum+inputAlpha     # Combines num and alphabet to form one string
+scrollSteps = 10                    # Keeps track of number of swipe/scroll steps
+alwaysAllowPermissions = True       # False implies always deny permissions
+inputTextOnce = True                # True - Write and close, False - Randomise between write and close
 
 # Operation Weights
 chanceOfNormalClicks = 1
@@ -133,6 +135,7 @@ class Node:
         # Click Attributes
         self.views = []
         self.resourceId = []
+        self.text = []
         self.cVisitFreq = []
         self.lcVisitFreq = []
         self.clickableXCoor = np.array([], dtype=int)
@@ -229,6 +232,16 @@ class Node:
                 # Has resource-id
                 else:
                     self.resourceId.append(temp)
+                # Obtain text
+                start = strAttrib.find("'text': '") + 9
+                end = strAttrib.find("'", start)
+                temp = strAttrib[start:end]
+                # Text is empty
+                if temp == '':
+                    temp = '(No text)'
+                    self.text.append(temp)
+                else:
+                    self.text.append(temp)
 
                 # Update cVisitFreq List
                 self.cVisitFreq.append(0)
@@ -369,7 +382,7 @@ def generateHashedState(state):
     clickCondition = "'clickable': 'true'"
     enabledCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
-    scrollCondition = "'text': 'true'"
+    scrollCondition = "'scrollable': 'true'"
     allowPermissionsId = 'com.android.packageinstaller:id/permission_allow_button'
     denyPermissionsId = 'com.android.packageinstaller:id/permission_deny_button'
 
@@ -450,7 +463,7 @@ def setupLogFile():
         f = open(tcLocation + "/testCases.py", "a")
         f.write("# New Test Case\n")
         f.write("# Target App: " + str(appName) + "\n")
-        f.write("# Target: " + str(numberOfInstructions) + " actions\n")
+        f.write("# Number of actions " + str(numberOfInstructions) + "\n")
 
     # File not created
     else:
@@ -589,6 +602,18 @@ def userInputSettings():
 
 
 # Emulator Operations
+def m_back(text):
+    # Manual back() without state checking [Close keyboard, close error pop up]
+    d.press.back()
+    d.wait.update()
+    print("d.press.back() - " + str(text))
+    f.write("d.press.back() # " + str(text) + "\n")
+    f.write("d.wait.update()\n")
+    f.write("time.sleep(2)\n")
+    time.sleep(1.5)
+    return
+
+
 def back(text):
     global prevNode
     global stateCount
@@ -604,11 +629,11 @@ def back(text):
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(2.5)
+    time.sleep(2)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(3)\n")
+    f.write("time.sleep(2)\n")
     # Checking state after back()
     backState = d.dump(compressed=True).encode('utf-8')
     backState_h = generateHashedState(backState)
@@ -677,12 +702,12 @@ def click(xCoor, yCoor):
 
     # Operation
     d.click((xCoor_c), (yCoor_c))
-    time.sleep(2)
+    time.sleep(1.5)
 
     # Write to log file
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("time.sleep(1.5)\n")
     d.wait.update()
 
 
@@ -700,12 +725,12 @@ def long_click(xCoor,yCoor):
 
     # Operation
     d.long_click(xCoor_c, yCoor_c)
-    time.sleep(1.5)
+    time.sleep(1)
 
     # Write to log file
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("time.sleep(1.5)\n")
     d.wait.update()
 
 
@@ -720,7 +745,7 @@ def scroll_up():
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.e_scrollableY[prevNode.currentIndex] - 5,
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(2)
+    time.sleep(1.5)
 
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
@@ -736,7 +761,7 @@ def scroll_up():
     print(temp + info)
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2.5)\n")
+    f.write("time.sleep(2)\n")
 
 
 def scroll_down():
@@ -750,7 +775,7 @@ def scroll_down():
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.scrollableY[prevNode.currentIndex] + 5,
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(2)
+    time.sleep(1.5)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -765,7 +790,7 @@ def scroll_down():
     print(temp + info)
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2.5)\n")
+    f.write("time.sleep(2)\n")
 
 
 def swipe_left():
@@ -779,7 +804,7 @@ def swipe_left():
             prevNode.scrollableX[prevNode.currentIndex] + 5, prevNode.c_scrollableY[prevNode.currentIndex],
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(2)
+    time.sleep(1.5)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -794,7 +819,7 @@ def swipe_left():
     print(temp + info)
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2.5)\n")
+    f.write("time.sleep(2)\n")
 
 
 def swipe_right():
@@ -808,7 +833,7 @@ def swipe_right():
             prevNode.e_scrollableX[prevNode.currentIndex] - 5, prevNode.c_scrollableY[prevNode.currentIndex],
             steps=scrollSteps)
     d.wait.update()
-    time.sleep(2)
+    time.sleep(1.5)
     # Print Operation details
     strTemp = str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", " + \
@@ -823,7 +848,7 @@ def swipe_right():
     print(temp + info)
     f.write(temp + info + "\n")
     f.write("d.wait.update()\n")
-    f.write("time.sleep(2.5)\n")
+    f.write("time.sleep(2)\n")
 
 
 # Logic Checks
@@ -841,50 +866,78 @@ def checkEmulator():
 
 
 def checkKeyboard():
+    # User defined variables
+    global inputNum
+    global inputAlpha
     global inputText
+    global inputTextOnce
     global enterInput
     global doNotEnterInput
     global closeKeyboard
     global doNotCloseKeyboard
+
+    # Virtual keyboard detection
     keyboardCondition = "mInputShown=true"
     cmd = 'adb shell dumpsys input_method | grep mInputShown'
     s = subprocess.check_output(cmd)
 
     # Soft keyboard found
     if keyboardCondition in s:
-        # Decision to enter input
-        decisionEnter = random.choice([0] * enterInput + [1] * doNotEnterInput)
 
-        # Enter inputText into input field
-        if decisionEnter == 0:
-            cmd = "adb shell input text " + inputText
-            subprocess.call(cmd)
-            print("Enter " + inputText + " into input field")
-            f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
-            f.write("time.sleep(1.5)\n")
+        # Write and close option
+        if inputTextOnce is True:
+            # Check if invalid selection type
+            if selectionType == 'scroll' or selectionType == 'swipe':
+                # Manual back to close keyboard
+                m_back("Close Keyboard")
+                return
 
-        # Did not input any text
+            # Input Text already exists
+            if inputNum in prevNode.text[prevNode.currentIndex] or inputAlpha in prevNode.text[prevNode.currentIndex]:
+                # Manual back to close keyboard
+                m_back("Close Keyboard")
+                return
+
+            # Input text does not exist
+            else:
+                # Enter input text
+                cmd = "adb shell input text " + inputText
+                subprocess.call(cmd)
+                print("Enter " + inputText + " into input field")
+                f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
+                f.write("time.sleep(1.5)\n")
+
+                # Manual back() to close keyboard
+                m_back("Close Keyboard")
+                return
+
+        # Randomise write and close
         else:
-            print("Did not input text.")
+            # Decision to enter input
+            decisionEnter = random.choice([0] * enterInput + [1] * doNotEnterInput)
 
-        # Decision to open/close keyboard
-        decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
+            # Enter inputText into input field
+            if decisionEnter == 0:
+                cmd = "adb shell input text " + inputText
+                subprocess.call(cmd)
+                print("Enter " + inputText + " into input field")
+                f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
+                f.write("time.sleep(1.5)\n")
 
-        # Close Keyboard
-        if decisionClose == 0:
-            # Manual back() (use nodeCheck() to ascertain state)
-            d.press.back()
-            d.wait.update()
-            text = "Close Keyboard"
-            print("d.press.back() - " + str(text))
-            f.write("d.press.back() # " + str(text) + "\n")
-            f.write("d.wait.update()\n")
-            f.write("time.sleep(2.5)\n")
-            time.sleep(1.5)
+            # Did not input any text
+            else:
+                print("Did not input any text.")
+
+            # Decision to open/close keyboard
+            decisionClose = random.choice([0] * closeKeyboard + [1] * doNotCloseKeyboard)
+            # Close Keyboard
+            if decisionClose == 0:
+                # Manual back() to close keyboard (use nodeCheck() to ascertain state)
+                m_back("Close keyboard")
+                return
+
+            print("Did not close keyboard")
             return
-
-        print("Did not close keyboard")
-        return
 
     # Soft keyboard not found
     return
@@ -955,9 +1008,11 @@ def checkNode():
     global crashNum
     global lcIndex
     global definedInvalidState
-    global notAllowedWeight
     global permissionState
     global alwaysAllowPermissions
+
+    # Weights
+    global notAllowedWeight
 
     # Get hashed versions of current State
     currentState = d.dump(compressed=True).encode('utf-8')
@@ -1013,13 +1068,8 @@ def checkNode():
         # Current state package is "android" - Possible crash
         if c_package == 'android':
             # Manual back() out of error message
-            d.press.back()
-            d.wait.update()
-            time.sleep(2)
-            f.write("d.press.back() # Possible Crash Detected\n")
-            f.write("d.wait.update()\n")
-            f.write("time.sleep(3)\n")
-            print("d.press.back() - Possible Crash Detected")
+            m_back("Possible Crash Detected")
+
             # Check if app has crashed
             if checkCrash(currentState_h) is True:
                 return
@@ -1559,7 +1609,7 @@ m.package = stateList[0].package     # Use Main Activity's package name
 prevNode = stateList[stateCount]
 stateCount = stateCount + 1
 
-# Random Algorithm, limited to number of instructions
+# Random Weighted Algorithm, limited to number of instructions
 instCount = 0
 
 # Loop till every clickable view in main activity is selected
@@ -1590,7 +1640,6 @@ eTime = time.time() - sTime
 
 # Update console and log
 print("End Test Case, Number of crashes detected: " + str(crashNum))
-print("Total Actions: " + str(numberOfInstructions))
 print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
 f.write("d.press.home()\n")
 f.write("# -End Test Case-\n")

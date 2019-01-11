@@ -20,13 +20,15 @@ import hashlib
 
 # To generate hashed states
 def generateHashedState(state):
+    global permissionState
     # Conditions
     clickCondition = "'clickable': 'true'"
     enabledCondition = "'enabled': 'true'"
     longClickCondition = "'long-clickable': 'true'"
-    scrollCondition = "'text': 'true'"
+    scrollCondition = "'scrollable': 'true'"
     allowPermissionsId = 'com.android.packageinstaller:id/permission_allow_button'
     denyPermissionsId = 'com.android.packageinstaller:id/permission_deny_button'
+
     # Attributes
     resourceId = ''
     view = ''
@@ -80,7 +82,8 @@ def generateHashedState(state):
 
     # Check if state is a permission state
     if resourceId == str(denyPermissionsId+allowPermissionsId):
-        print("This is a permission state")
+        print("Permission state detected.")
+        permissionState = True
 
     # Return Hash
     return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
