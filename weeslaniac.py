@@ -1631,7 +1631,7 @@ stateCount = stateCount + 1
 # Random Weighted Algorithm, limited to number of instructions
 instCount = 0
 
-# Loop till every clickable view in main activity is selected
+# Loop till user defined number of actions is reached
 while instCount < numberOfInstructions:
     # Reset back() flag
     backFlag = False
