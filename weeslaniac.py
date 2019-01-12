@@ -26,6 +26,7 @@ inputText = inputNum+inputAlpha     # Combines num and alphabet to form one stri
 scrollSteps = 10                    # Keeps track of number of swipe/scroll steps
 alwaysAllowPermissions = True       # False implies always deny permissions
 inputTextOnce = True                # True - Write and close, False - Randomise between write and close
+closeAppClean = True                # True - Close app and remove all data, False - Preserve data upon exit
 
 # Operation Weights
 chanceOfNormalClicks = 1
@@ -42,6 +43,7 @@ doNotCloseKeyboard = 10 - closeKeyboard
 # Static Weights
 defaultWeight = 40
 baseWeight = 5
+inputTextWeight = 2
 selfTransitionWeight = 2
 crashWeight = 2
 invalidTransitionWeight = 1
@@ -614,7 +616,7 @@ def m_back(text):
     return
 
 
-def back(text):
+def back(text, keyboard=False):
     global prevNode
     global stateCount
     global stateList
@@ -653,16 +655,18 @@ def back(text):
         back("Still in 3rd party app")
         return
 
-    # back() into same state (Activity cannot be back() - Permissions)
-    if backState_h == prevNode.state:
-        # Click on the first clickable object to exit
-        d(clickable=True).click()
-        f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
-        print("Within a state that cannot be back()")
+    # Skip if back() in checkKeyboard()
+    if keyboard is False:
+        # back() into same state (Activity cannot be back() - Permissions)
+        if backState_h == prevNode.state:
+            # Click on the first clickable object to exit
+            d(clickable=True).click()
+            f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
+            print("Within a state that cannot be back()")
 
-        # Obtain new state
-        backState = d.dump(compressed=True).encode('utf-8')
-        backState_h = generateHashedState(backState)
+            # Obtain new state
+            backState = d.dump(compressed=True).encode('utf-8')
+            backState_h = generateHashedState(backState)
 
     # back() to known state
     for i in range(len(stateList)):
@@ -875,6 +879,10 @@ def checkKeyboard():
     global doNotEnterInput
     global closeKeyboard
     global doNotCloseKeyboard
+    global selfTransitionCount
+    global inputTextWeight
+    global prevNode
+    global lcIndex
 
     # Virtual keyboard detection
     keyboardCondition = "mInputShown=true"
@@ -894,8 +902,10 @@ def checkKeyboard():
 
             # Input Text already exists
             if inputNum in prevNode.text[prevNode.currentIndex] or inputAlpha in prevNode.text[prevNode.currentIndex]:
-                # Manual back to close keyboard
-                m_back("Close Keyboard")
+                # back to close keyboard
+                back("Close Keyboard", True)
+                # Update self transition count
+                selfTransitionCount += 1
                 return
 
             # Input text does not exist
@@ -907,8 +917,16 @@ def checkKeyboard():
                 f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
                 f.write("time.sleep(1.5)\n")
 
+                if selectionType == 'click':
+                    prevNode.cVisitFreq[prevNode.currentIndex] += 1
+                    prevNode.cTransitionWeight[prevNode.currentIndex] = inputTextWeight
+
+                if selectionType == 'long-click':
+                    prevNode.lcVisitFreq[lcIndex] += 1
+                    prevNode.lcTransitionWeight[lcIndex] = inputTextWeight
+
                 # Manual back() to close keyboard
-                m_back("Close Keyboard")
+                back("Close Keyboard", True)
                 return
 
         # Randomise write and close
@@ -1207,7 +1225,7 @@ def checkCrash(currentState):
 
         # Obtain current state after reopening app
         c_currentState = d.dump(compressed=True).encode('utf-8')
-        c_currentState_h = generateHashedState(currentState)
+        c_currentState_h = generateHashedState(c_currentState)
 
         # Open App into known state
         for i in range(len(stateList)):
@@ -1228,6 +1246,7 @@ def checkCrash(currentState):
     return False
 
 
+# Operation/Index Decision Point
 def currentIndexDecision(decision):
     global prevNode
     global selectionType
@@ -1631,9 +1650,25 @@ while instCount < numberOfInstructions:
     # Instruction Counter
     instCount = instCount + 1
 
-# Exiting from App
-d.press.home()
-d.wait.update()
+# Save state upon exit
+if closeAppClean is False:
+    d.press.home()
+    d.wait.update()
+    f.write("d.press.home()\n")
+
+# Reset app to factory settings upon exit
+else:
+    # Reset to factory settings if no crashes found
+    if crashNum == 0:
+        cmd = "adb shell pm clear " + m.package
+        subprocess.call(cmd)
+        f.write("subprocess.call(" + cmd + ")")
+
+    # Do not reset app if crashes are found (Fail-safe)
+    else:
+        cmd = "adb shell am force-stop " + m.package
+        subprocess.call(cmd)
+        f.write("subprocess.call(" + cmd + ")")
 
 # Obtain elapsed tme
 eTime = time.time() - sTime
@@ -1641,7 +1676,6 @@ eTime = time.time() - sTime
 # Update console and log
 print("End Test Case, Number of crashes detected: " + str(crashNum))
 print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
-f.write("d.press.home()\n")
 f.write("# -End Test Case-\n")
 f.write("# -Number of crashes detected: " + str(crashNum) + "\n")
 f.write("# Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))) + "\n")
