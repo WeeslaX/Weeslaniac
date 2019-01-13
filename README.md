@@ -7,7 +7,7 @@
 
 ## Features
 
-- Compatible only with **Android** devices and emulators/
+- Compatible only with **Android** devices and emulators.
 - Compatible with any OS that can run Python.
 - Works well with apps that do not require registration.
 - Crash detection and continuation capabilities. 
@@ -30,7 +30,7 @@ Recommended Emulator:
 ### SDK Tools
 
 Create an environment variable **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) and add it to **PATH**.
-([Guide])(https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
+[(Guide)](https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
 
 
 
