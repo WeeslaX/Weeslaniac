@@ -14,12 +14,15 @@ Recommended Emulator:
 
 ## Installation
 
+
 ### SDK Tools
+
 Create **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) as an environment variable and add it to **PATH**.
 ([Guide)](https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
 
 
 ### Essential Python Tools Libraries
+
 **Weeslaniac Fuzzing Tool** uses a vast array of python libraries which can be downloaded using the package manager [pip](https://pip.pypa.io/en/stable/):
 
 ```bash
@@ -33,6 +36,7 @@ The list of libraries that requires installation are as follows:
 2. networkx
 3. numpy
 ```
+
 
 ## Usage
 
