@@ -1,9 +1,7 @@
 # Weeslaniac
 
 ## Description
-The **Weeslaniac Fuzzing Tool** is a pure python based script that fuzzes an android application's GUI to primarily detect crashes and potentially other GUI related vulerabilities.
-
-The script works on android devices as well as android emulators.
+The **Weeslaniac Fuzzing Tool** is a pure python based script that fuzzes an android application's GUI to primarily detect crashes and potentially other GUI related vulerabilities. The script works on android devices and emulators.
 
 ## Pre-requisites
 
