@@ -160,17 +160,17 @@ for elem in root.iter():
         end = temp.find("]", start)
         eClickableYCoor = np.append(eClickableYCoor, int(temp[start:end]))
         # Obtain package names
-        start = strAttrib.find("'package': '") + 12
+        start = strAttrib.find("'package': ") + 12
         end = strAttrib.find("'", start)
         package = strAttrib[start:end]
         # Obtain view names
-        start = strAttrib.find("'class': '") + 10
+        start = strAttrib.find("'class': ") + 10
         end = strAttrib.find("'", start)
         temp = strAttrib[start:end]
         temp = str(temp)
         view.append(temp)
         # Obtain resource id
-        start = strAttrib.find("'resource-id': '") + 16
+        start = strAttrib.find("'resource-id': ") + 16
         end = strAttrib.find("'", start)
         temp = strAttrib[start:end]
         if temp == '':
@@ -179,8 +179,8 @@ for elem in root.iter():
         else:
             resourceId.append(temp)
         # Obtain text
-        start = strAttrib.find("'text': '") + 9
-        end = strAttrib.find("'", start)
+        start = strAttrib.find("'text': ") + 9
+        end = strAttrib.find("}", start) - 1
         temp = strAttrib[start:end]
         # Text is empty
         if temp == '':
@@ -189,8 +189,8 @@ for elem in root.iter():
         else:
             text.append(temp)
         # Obtain content-desc
-        start = strAttrib.find("'content-desc': '") + 17
-        end = strAttrib.find("'", start)
+        start = strAttrib.find("'content-desc': ") + 17
+        end = strAttrib.find(",", start) - 1
         temp = strAttrib[start:end]
         if temp == '':
             temp = "(no content-desc)"
@@ -208,6 +208,7 @@ for elem in root.iter():
             lcVisitFreq.append(0)
         else:
             longClickable.append(str(False))
+
         longClickIndex = longClickIndex + 1
 
     # scrollable
@@ -261,13 +262,16 @@ if len(scrollableX) >= 1:
         temp = (((e_scrollableY[n] - scrollableY[n]) / 2) + scrollableY[n])
         c_scrollableY.append(temp)
 
+print("Full Hierarchy")
+print(state1)
+print("\n")
 
 # Use MD5 hashing to speed up state matching process
 print("Hashed Hierarchy")
 print(generateHashedHierachy(state1))
 
 # Use MD5 hashing to speed up state matching process
-print("Hashed state")
+print("Hashed State")
 print(generateHashedState(state1))
 
 # Clickable Views

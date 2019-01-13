@@ -37,7 +37,7 @@ chanceOfScroll = 1
 chanceOfSwipe = 1
 
 # Keyboard Weights
-enterInput = 4
+enterInput = 5
 doNotEnterInput = 10 - enterInput
 closeKeyboard = 7
 doNotCloseKeyboard = 10 - closeKeyboard
@@ -70,10 +70,12 @@ class MainNode:
         # Find clickable XY locations
         found = False
         root = ET.fromstring(state)
-        for elem in root.iter():
 
+        # Search for app, start with ''
+        tempAppName = "'content-desc': '" + appName
+        for elem in root.iter():
             strAttrib = str(elem.attrib)
-            if appName in strAttrib:
+            if tempAppName in strAttrib:
                 # Obtain XY Coordinates of clickable coordinates
                 start = strAttrib.find("'bounds': '") + 12
                 end = strAttrib.find('[', start)
@@ -85,12 +87,12 @@ class MainNode:
                 end = temp.find("]", start)
                 self.appYCoor = int(temp[start:end])
                 # Obtain view names
-                start = strAttrib.find("'class': '") + 10
+                start = strAttrib.find("'class': ") + 10
                 end = strAttrib.find("'", start)
                 temp = strAttrib[start:end]
                 self.views.append(str(temp))
                 # Obtain resource-id
-                start = strAttrib.find("'resource-id': '") + 16
+                start = strAttrib.find("'resource-id': ") + 16
                 end = strAttrib.find("'", start)
                 temp = strAttrib[start:end]
                 # No resource-id
@@ -104,14 +106,51 @@ class MainNode:
                 print("App Found")
                 break
 
-        # Index of App
-        self.currentIndex = len(self.views)-1
+        # Not found, try with ""
+        if found is False:
+            tempAppName = ''''content-desc': "''' + appName
+            for elem in root.iter():
+                strAttrib = str(elem.attrib)
+                if tempAppName in strAttrib:
+                    # Obtain XY Coordinates of clickable coordinates
+                    start = strAttrib.find("'bounds': '") + 12
+                    end = strAttrib.find('[', start)
+                    temp = strAttrib[start:end]
+                    start = temp.find("[") + 1
+                    end = temp.find(",", start)
+                    self.appXCoor = int(temp[start:end])
+                    start = temp.find(",") + 1
+                    end = temp.find("]", start)
+                    self.appYCoor = int(temp[start:end])
+                    # Obtain view names
+                    start = strAttrib.find("'class': ") + 10
+                    end = strAttrib.find("'", start)
+                    temp = strAttrib[start:end]
+                    self.views.append(str(temp))
+                    # Obtain resource-id
+                    start = strAttrib.find("'resource-id': ") + 16
+                    end = strAttrib.find("'", start)
+                    temp = strAttrib[start:end]
+                    # No resource-id
+                    if temp == '':
+                        temp = '(No resource.id)'
+                        self.resourceId.append(temp)
+                    # Has resource-id
+                    else:
+                        self.resourceId.append(temp)
+                    found = True
+                    print("App Found")
+                    break
 
-        if found == False:
+        # App does not exist
+        if found is False:
             print("Target App Not Found")
-            f.write("#-Terminate Test (App not Found)-\n")
+            f.write("# -Terminate Test (App not Found)-\n")
             f.close()
             sys.exit()
+
+        # Index of App
+        self.currentIndex = len(self.views)-1
 
         # Screen shot of State
         d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
@@ -216,17 +255,17 @@ class Node:
                 self.cTransitionWeight.append(defaultWeight)
 
                 # Obtain package names
-                start = strAttrib.find("'package': '") + 12
+                start = strAttrib.find("'package': ") + 12
                 end = strAttrib.find("'", start)
                 temp = strAttrib[start:end]
                 self.package = str(temp)
                 # Obtain view names
-                start = strAttrib.find("'class': '") + 10
+                start = strAttrib.find("'class': ") + 10
                 end = strAttrib.find("'", start)
                 temp = strAttrib[start:end]
                 self.views.append(str(temp))
                 # Obtain resource-id
-                start = strAttrib.find("'resource-id': '") + 16
+                start = strAttrib.find("'resource-id': ") + 16
                 end = strAttrib.find("'", start)
                 temp = strAttrib[start:end]
                 # No resource-id
@@ -237,8 +276,8 @@ class Node:
                 else:
                     self.resourceId.append(temp)
                 # Obtain text
-                start = strAttrib.find("'text': '") + 9
-                end = strAttrib.find("'", start)
+                start = strAttrib.find("'text': ") + 9
+                end = strAttrib.find("}", start) - 1
                 temp = strAttrib[start:end]
                 # Text is empty
                 if temp == '':
@@ -395,25 +434,27 @@ def generateHashedState(state):
     view = ''
     package = ''
     text = ''
+    contentDesc = ''
     longClickable = ''
     scroll = ''
     root = ET.fromstring(state)
+
     for elem in root.iter():
         strAttrib = str(elem.attrib)
         # Find clickable Views
         if clickCondition in strAttrib and enabledCondition in strAttrib:
             # Obtain package names
-            start = strAttrib.find("'package': '") + 12
-            end = strAttrib.find("'", start)
+            start = strAttrib.find("'package': ") + 12
+            end = strAttrib.find(",", start) - 1
             temp = strAttrib[start:end]
             package = str(temp)
             # Obtain view names
-            start = strAttrib.find("'class': '") + 10
+            start = strAttrib.find("'class': ") + 10
             end = strAttrib.find("'", start)
             temp = strAttrib[start:end]
             view = view+str(temp)
             # Obtain resource-id
-            start = strAttrib.find("'resource-id': '") + 16
+            start = strAttrib.find("'resource-id': ") + 16
             end = strAttrib.find("'", start)
             temp = strAttrib[start:end]
             # resource-id is empty
@@ -424,8 +465,8 @@ def generateHashedState(state):
             else:
                 resourceId = resourceId + temp
             # Obtain text
-            start = strAttrib.find("'text': '") + 9
-            end = strAttrib.find("'", start)
+            start = strAttrib.find("'text': ") + 9
+            end = strAttrib.find("}", start) - 1
             temp = strAttrib[start:end]
             # Text is empty
             if temp == '':
@@ -433,6 +474,15 @@ def generateHashedState(state):
                 text = text + temp
             else:
                 text = text + temp
+            # Obtain content-desc
+            start = strAttrib.find("'content-desc': ") + 17
+            end = strAttrib.find(",", start) - 1
+            temp = strAttrib[start:end]
+            if temp == '':
+                temp = "(no content-desc)"
+                contentDesc = contentDesc + temp
+            else:
+                contentDesc = contentDesc + temp
 
             # Long clickable
             if longClickCondition in strAttrib:
@@ -447,7 +497,7 @@ def generateHashedState(state):
         permissionState = True
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+text+contentDesc+longClickable+scroll)).digest().encode("base64")
 
 
 def generateHashedHierarchy(state):
@@ -531,7 +581,58 @@ def addNode(state):
     return
 
 
-# GUI Setup
+def getCurrentStateText(state):
+    global prevNode
+    global inputText
+    clickCondition = "'clickable': 'true'"
+    enabledCondition = "'enabled': 'true'"
+    text = []
+    root = ET.fromstring(state)
+    # Find only text within Hierarchy
+    for elem in root.iter():
+        strAttrib = str(elem.attrib)
+        # Find clickable Views
+        if clickCondition in strAttrib and enabledCondition in strAttrib:
+            # Obtain text
+            start = strAttrib.find("'text': ") + 9
+            end = strAttrib.find("}", start) - 1
+            temp = strAttrib[start:end]
+            # Text is empty
+            if temp == '':
+                temp = '(No text)'
+                text.append(temp)
+            else:
+                text.append(temp)
+
+    # Generate hashed state for comparison purposes
+    h_state = generateHashedState(state)
+
+    # Self transition after keyboard close
+    if h_state == prevNode.state:
+        return text[prevNode.currentIndex]
+
+    # New state after keyboard close, do randomised input algorithm instead
+    else:
+        # Decision to enter input
+        decisionEnter = random.choice([0] * enterInput + [1] * doNotEnterInput)
+
+        # Enter inputText into input field
+        if decisionEnter == 0:
+            cmd = "adb shell input text " + inputText
+            subprocess.call(cmd)
+            print("Enter " + inputText + " into input field")
+            f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
+            f.write("time.sleep(1.5)\n")
+
+        # Did not input any text
+        else:
+            print("Did not input any text.")
+
+        # Prevent text from being entered twice
+        return inputText
+
+
+# Gui Setup
 def save(entries):
     global gui
     global appName
@@ -541,7 +642,7 @@ def save(entries):
     global tcLocation
 
     # Store App Name
-    appName = "'content-desc': '" + str(entries[0].get())
+    appName = str(entries[0].get())
 
     # Store number of actions
     try:
@@ -574,7 +675,7 @@ def userInputSettings():
     # Preset Values
     label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
              'test_case.py Location:']
-    default = ['Tricky', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
+    default = ['Omni', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
                "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
 
     entries = []
@@ -614,7 +715,7 @@ def m_back(text):
     f.write("d.press.back() # " + str(text) + "\n")
     f.write("d.wait.update()\n")
     f.write("time.sleep(2)\n")
-    time.sleep(1.5)
+    time.sleep(2.5)
     return
 
 
@@ -627,17 +728,14 @@ def back(text, keyboard=False):
 
     # Set back() flag to True to skip nodeCheck
     backFlag = True
-
-    # Set selection type
-
     # Operation
     d.press.back()
     d.wait.update()
-    time.sleep(2)
     print("d.press.back() - " + str(text))
     f.write("d.press.back() #" + str(text) +"\n")
     f.write("d.wait.update()\n")
     f.write("time.sleep(2)\n")
+    time.sleep(3)
     # Checking state after back()
     backState = d.dump(compressed=True).encode('utf-8')
     backState_h = generateHashedState(backState)
@@ -651,24 +749,29 @@ def back(text, keyboard=False):
         backState = d.dump(compressed=True).encode('utf-8')
         backState_h = generateHashedState(backState)
 
-    # back() into 3rd party app
-    package = checkCurrentPackage(backState)
-    if package != m.package:
-        back("Still in 3rd party app")
-        return
-
     # Skip if back() in checkKeyboard()
     if keyboard is False:
-        # back() into same state (Activity cannot be back() - Permissions)
+        # back() into same state - Activity cannot be back()
         if backState_h == prevNode.state:
             # Click on the first clickable object to exit
             d(clickable=True).click()
+            d.wait.update()
             f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
             print("Within a state that cannot be back()")
+            time.sleep(2)
 
             # Obtain new state
             backState = d.dump(compressed=True).encode('utf-8')
             backState_h = generateHashedState(backState)
+
+    # back() into 3rd party app
+    package = checkCurrentPackage(backState)
+    if package != m.package:
+        # Create a temporary node to store current state
+        tempNode = Node("cantBack", backState, -1)
+        prevNode = tempNode
+        back("Still in 3rd party app")
+        return
 
     # back() to known state
     for i in range(len(stateList)):
@@ -885,6 +988,7 @@ def checkKeyboard():
     global inputTextWeight
     global prevNode
     global lcIndex
+    global selectionType
 
     # Virtual keyboard detection
     keyboardCondition = "mInputShown=true"
@@ -902,10 +1006,16 @@ def checkKeyboard():
                 m_back("Close Keyboard")
                 return
 
+            # Get current state's text after manual back()
+            m_back("Close Keyboard")
+            keyboardState = d.dump(compressed=True).encode('utf-8')
+            currentText = getCurrentStateText(keyboardState)
+
             # Input Text already exists
-            if inputNum in prevNode.text[prevNode.currentIndex] or inputAlpha in prevNode.text[prevNode.currentIndex]:
-                # back to close keyboard
-                back("Close Keyboard", True)
+            if inputNum in currentText or inputAlpha in currentText:
+                print("Text already exists/Randomised Algorithm")
+                # Check state
+                checkKeyboardState()
                 # Update self transition count
                 selfTransitionCount += 1
                 return
@@ -927,8 +1037,8 @@ def checkKeyboard():
                     prevNode.lcVisitFreq[lcIndex] += 1
                     prevNode.lcTransitionWeight[lcIndex] = inputTextWeight
 
-                # Manual back() to close keyboard
-                back("Close Keyboard", True)
+                # Check state
+                checkKeyboardState()
                 return
 
         # Randomise write and close
@@ -963,6 +1073,44 @@ def checkKeyboard():
     return
 
 
+def checkKeyboardState():
+    global prevNode
+    global stateCount
+    global stateList
+    global backFlag
+    # Set back() flag to True to skip nodeCheck
+    backFlag = True
+
+    # Checking state after input text
+    backState = d.dump(compressed=True).encode('utf-8')
+    backState_h = generateHashedState(backState)
+
+    # Closed keyboard within 3rd party app
+    package = checkCurrentPackage(backState)
+    if package != m.package:
+        # Create a temporary node to store current state
+        tempNode = Node("cantBack", backState, -1)
+        prevNode = tempNode
+        back("Still in 3rd party app")
+        return
+
+    # Closed keyboard to known state
+    for i in range(len(stateList)):
+        # If back() to known state
+        if backState_h == stateList[i].state:
+            print("back() into Existing State: " + stateList[i].name)
+            prevNode = stateList[i]
+            return
+
+    # Closed keyboard to unknown state, Add new node
+    msg = "back() into Unknown State"
+    selectionType = 'back'
+    print(msg)
+    f.write("#" + msg + "\n")
+    addNode(backState)
+    return
+
+
 def checkSelfTransLimit():
     global selfTransitionCount
     global selfTransitionLimit
@@ -984,8 +1132,8 @@ def checkCurrentPackage(state):
         strAttrib = str(elem.attrib)
         if clickCondition in strAttrib:
             # Obtain package names
-            start = strAttrib.find("'package': '") + 12
-            end = strAttrib.find("'", start)
+            start = strAttrib.find("'package': ") + 12
+            end = strAttrib.find(",", start) - 1
             return str(strAttrib[start:end])
 
     # No clickable Views
@@ -1044,16 +1192,20 @@ def checkNode():
         # User set to always allow permissions
         if alwaysAllowPermissions is True:
             d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()
+            d.wait.update()
             temp = "d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()"
             print(temp)
+            time.sleep(1.5)
             f.write(temp + "\n")
             f.write("# Permission State detected, 'Allow' selected\n")
 
         # User set to always deny permissions
         else:
             d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()
+            d.wait.update()
             temp = "d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()"
             print(temp)
+            time.sleep(1.5)
             f.write(temp + "\n")
             f.write("# Permission State detected, 'Deny' selected\n")
 
@@ -1265,7 +1417,6 @@ def currentIndexDecision(decision):
             probabilityList = probabilityList + ([i] * prevNode.lcTransitionWeight[i])
 
         lcIndex = random.choice(probabilityList)
-
 
         # Workaround for a rare bug that occurs, default to index 0
         if lcIndex >= len(prevNode.lcTransitionWeight):
