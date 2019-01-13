@@ -5,16 +5,18 @@
 #####################################################################################################################
 
 import xml.etree.ElementTree as ET
-import networkx as nx
 import subprocess
-from uiautomator import device as d
-import numpy as np
 import time
 import hashlib
 import random
 import os
 from Tkinter import *
 from tkMessageBox import *
+
+# Installed
+from uiautomator import device as d
+import networkx as nx
+import numpy as np
 
 
 # Possible User inputs

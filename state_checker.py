@@ -100,6 +100,7 @@ time.sleep(1.5)
 # Initialise all required arrays/variables
 view = []
 resourceId = []
+contentDesc = []
 clickableXCoor = np.array([])
 clickableYCoor = np.array([])
 eClickableXCoor = np.array([])
@@ -187,6 +188,15 @@ for elem in root.iter():
             text.append(temp)
         else:
             text.append(temp)
+        # Obtain content-desc
+        start = strAttrib.find("'content-desc': '") + 17
+        end = strAttrib.find("'", start)
+        temp = strAttrib[start:end]
+        if temp == '':
+            temp = "(no content-desc)"
+            contentDesc.append(temp)
+        else:
+            contentDesc.append(temp)
 
         # Update cVisitFreq
         cVisitFreq.append(0)
@@ -272,6 +282,9 @@ print(resourceId)
 print("\n")
 print("Clickable text")
 print(text)
+print("\n")
+print("Clickable Content-Desc")
+print(contentDesc)
 print("\n")
 print("Clickable XY coordinates (Top-left bounds)")
 print(clickableXCoor)

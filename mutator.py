@@ -39,9 +39,6 @@ class UserNode:
         # Check identification Type (Eg: content desc, resource-id, text, etc)
         [self.identificationType, self.identification] = checkIdentification(inst)
 
-        # Screenshot of user defined state
-        d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
-
     # Converts Culebra's operations to uiAutomator (Work in progress)
     def action(self):
         # Selection Type: Click
@@ -182,6 +179,14 @@ def getInstructions(test):
 instList = np.array([])
 nodeList = []
 
+# (Temporary) User inputs
+ip = int(input("Enable mutatation? (0: No, 1: Yes): "))
+
+if ip == 0:
+    enableMutations = False
+else:
+    enableMutations = True
+
 # Import test case script
 sys.path.append(testCasePath)
 tc = __import__(testCaseName, globals(), locals(), [])
@@ -198,10 +203,9 @@ for i in range(len(instList)):
     newNode = UserNode(instList[i], i)
     nodeList.append(newNode)
 
-print("Start Mutation-based Testing")
-
 # Normal User defined test case
 if enableMutations is False:
+    print("Start Normal Testing")
     # Normal Test
     for i in range(len(nodeList)):
         # Normal Operation
@@ -212,7 +216,7 @@ if enableMutations is False:
     subprocess.call(cmd)
     time.sleep(1)
     # Check orientation
-    if d.orientation == 'l' or d.orientation == 'r':
+    if str(d.orientation) == 'left' or str(d.orientation) == 'right':
         d.orientation = 'n'
         d.wait.update()
         time.sleep(1)
@@ -220,6 +224,7 @@ if enableMutations is False:
 
 # Mutation enabled [Work in progress: Add more functionailities]
 else:
+    print("Start Mutation-based Testing")
     # Refers to number of normal actions to be taken [Open app]
     actions = 1
 
