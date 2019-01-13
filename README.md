@@ -50,7 +50,7 @@ pip install uiautomator
 
 2. A settings pop-up will be displayed:
 
-![alt text](Weeslaniac/Settings.PNG)
+![Screenshot](Settings.PNG)
 
 
 ## Pending Updates
