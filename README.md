@@ -29,7 +29,7 @@ Recommended Emulator:
 
 ### SDK Tools
 
-Create **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) as an environment variable and add it to **PATH**.
+Create an environment variable **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) and add it to **PATH**.
 ([Guide])(https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
 
 
