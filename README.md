@@ -17,11 +17,13 @@ Recommended Emulator:
 
 ### SDK Tools
 
+
 Create **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) as an environment variable and add it to **PATH**.
-([Guide)](https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
+([Guide])(https://www.360logica.com/blog/how-to-set-path-environmental-variable-for-sdk-in-windows/)
 
 
 ### Essential Python Tools Libraries
+
 
 **Weeslaniac Fuzzing Tool** uses a vast array of python libraries which can be downloaded using the package manager [pip](https://pip.pypa.io/en/stable/):
 
@@ -29,7 +31,7 @@ Create **ANDROID_HOME** (Full Path to: ..\SDK\platform-tools) as an environment 
 pip install uiautomator
 ```
 
-The list of libraries that requires installation are as follows:
+The list of libraries that requires installation (if not already done so) are as follows:
 
 ```
 1. uiautomator
@@ -39,6 +41,16 @@ The list of libraries that requires installation are as follows:
 
 
 ## Usage
+
+1. Download and run the script on your preferred OS Terminal.
+
+```bash
+pip install uiautomator
+```
+
+2. A settings pop-up will be displayed:
+
+![alt text](Weeslaniac/Settings.PNG)
 
 
 ## Pending Updates
