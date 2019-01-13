@@ -87,3 +87,4 @@ adb devices
 - Visual node diagram that maps and links each screenshot states with its respective actions.
 - Allows interaction with 3rd party apps.
 - Explore account registration capabilities.
+- Add capability to fuzz multiple devices at once.
