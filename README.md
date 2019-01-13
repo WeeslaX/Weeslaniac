@@ -6,11 +6,11 @@ The **Weeslaniac Fuzzing Tool** is a pure python based script that fuzzes an and
 ## Pre-requisites
 
 Required:
-- [Python 2.7] (https://www.python.org/downloads/release/python-2713/)
-- [SDK Tools] (https://developer.android.com/studio/)
+- [Python 2.7](https://www.python.org/downloads/release/python-2713/)
+- [SDK Tools](https://developer.android.com/studio/)
 
 Recommended Emulator:
-- [Genymotion] (https://www.genymotion.com/)
+- [Genymotion](https://www.genymotion.com/)
 
 ## Installation
 
