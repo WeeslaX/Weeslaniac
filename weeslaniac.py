@@ -145,7 +145,7 @@ class MainNode:
         # App does not exist
         if found is False:
             print("Target App Not Found")
-            f.write("# -Terminate Test (App not Found)-\n")
+            f.write("    # -Terminate Test (App not Found)-\n")
             f.close()
             sys.exit()
 
@@ -385,7 +385,7 @@ class Node:
                 d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
                 # Terminate Testing
                 print("Terminate Testing")
-                f.write("# -Terminate Testing (No Clickable View in Main Activity)-\n")
+                f.write("    # -Terminate Testing (No Clickable View in Main Activity)-\n")
                 f.close()
                 sys.exit()
             else:
@@ -497,7 +497,7 @@ def generateHashedState(state):
         permissionState = True
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+text+contentDesc+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
 
 
 def generateHashedHierarchy(state):
@@ -510,28 +510,27 @@ def setupLogFile():
     global tcLocation
     global appName
     exists = os.path.isfile(tcLocation + "/testCases.py")
-    # File already created
+    # File already created, overwrite existing file
     if exists:
-        print("File Exists, adding new test case to " + tcLocation)
-        # Use existing python test file
-        f = open(tcLocation + "/testCases.py", "a")
-        f.write("# New Test Case\n")
-        f.write("# Target App: " + str(appName) + "\n")
-        f.write("# Number of actions " + str(numberOfInstructions) + "\n")
+        print("File Exists, overwriting new test case to " + tcLocation)
 
-    # File not created
+    # File not created, create new file
     else:
         print("Creating new test case file at " + tcLocation)
         # Create new Python test file
-        f = open(tcLocation + "/testCases.py", "a+")
 
-        # Import List
-        f.write("from uiautomator import device as d\n")
-        f.write("import time\n")
-        f.write("import subprocess\n\n")
-        f.write("# New Test Case\n")
-        f.write("# Target App: " + str(appName) + "\n")
-        f.write("# Number of actions: " + str(numberOfInstructions) + "\n")
+    # Overwrite file regardless of new or existing
+    f = open(tcLocation + "/testCases.py", "w+")
+    # Import List
+    f.write("from uiautomator import device as d\n")
+    f.write("import time\n")
+    f.write("import subprocess\n\n\n")
+    # User Defined details
+    f.write("# New Test Case\n")
+    f.write("# Target App: " + str(appName) + "\n")
+    f.write("# Number of actions: " + str(numberOfInstructions) + "\n")
+    # Create new function for testing
+    f.write("def test():\n")
 
 
 def addNode(state):
@@ -621,8 +620,8 @@ def getCurrentStateText(state):
             cmd = "adb shell input text " + inputText
             subprocess.call(cmd)
             print("Enter " + inputText + " into input field")
-            f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
-            f.write("time.sleep(1.5)\n")
+            f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
+            f.write("    time.sleep(1.5)\n")
 
         # Did not input any text
         else:
@@ -712,9 +711,9 @@ def m_back(text):
     d.press.back()
     d.wait.update()
     print("d.press.back() - " + str(text))
-    f.write("d.press.back() # " + str(text) + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    d.press.back()\n    # " + str(text) + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
     time.sleep(2.5)
     return
 
@@ -732,9 +731,9 @@ def back(text, keyboard=False):
     d.press.back()
     d.wait.update()
     print("d.press.back() - " + str(text))
-    f.write("d.press.back() #" + str(text) +"\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    d.press.back()\n    #" + str(text) +"\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
     time.sleep(3)
     # Checking state after back()
     backState = d.dump(compressed=True).encode('utf-8')
@@ -756,9 +755,11 @@ def back(text, keyboard=False):
             # Click on the first clickable object to exit
             d(clickable=True).click()
             d.wait.update()
-            f.write("d(clickable=True).click()  # Within a state that cannot be back()\n")
+            f.write("    d(clickable=True).click()\n    # Within a state that cannot be back()\n")
+            f.write("    d.wait.update()\n")
+            f.write("    time.sleep(1.5)\n")
             print("Within a state that cannot be back()")
-            time.sleep(2)
+            time.sleep(1.5)
 
             # Obtain new state
             backState = d.dump(compressed=True).encode('utf-8')
@@ -785,7 +786,7 @@ def back(text, keyboard=False):
     msg = "back() into Unknown State"
     selectionType = 'back'
     print(msg)
-    f.write("#" + msg + "\n")
+    f.write("    # " + msg + "\n")
     addNode(backState)
     return
 
@@ -804,20 +805,19 @@ def click(xCoor, yCoor):
 
 
     # Print information
-    temp = 'd.click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ') # At '
-    info = prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[
+    temp = 'd.click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ')\n'
+    info = "    # At " + prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[
         prevNode.currentIndex]
     print(temp + info)
 
     # Operation
     d.click((xCoor_c), (yCoor_c))
-    time.sleep(1.5)
-
-    # Write to log file
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(1.5)\n")
     d.wait.update()
+    # Write to log file
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(1.5)\n")
+    time.sleep(1.5)
 
 
 def long_click(xCoor,yCoor):
@@ -827,20 +827,20 @@ def long_click(xCoor,yCoor):
     yCoor_c = int((prevNode.e_clickableYCoor[prevNode.currentIndex] - yCoor) / 2) + yCoor
 
     # Print Information
-    temp = 'd.long_click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ') # At '
+    temp = 'd.long_click(' + str(xCoor_c) + ', ' + str(yCoor_c) + ')\n    # At '
     info = prevNode.name + ', ' + prevNode.views[prevNode.currentIndex] + ', ' + prevNode.resourceId[
         prevNode.currentIndex]
     print(temp + info)
 
     # Operation
     d.long_click(xCoor_c, yCoor_c)
+    d.wait.update()
+    # Write to log file
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(1.5)\n")
     time.sleep(1)
 
-    # Write to log file
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(1.5)\n")
-    d.wait.update()
 
 
 # Scroll/Swipe Operations
@@ -862,15 +862,15 @@ def scroll_up():
               str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.e_scrollableY[prevNode.currentIndex] - 5) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n# Scroll up At "
+    temp = "d.swipe(" + strTemp + ")\n    # Scroll up At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
 
     print(temp + info)
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
 
 
 def scroll_down():
@@ -891,15 +891,15 @@ def scroll_down():
               str(prevNode.c_scrollableX[prevNode.currentIndex]) + ", " + \
               str(prevNode.scrollableY[prevNode.currentIndex] + 5) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n# Scroll down At "
+    temp = "d.swipe(" + strTemp + ")\n    # Scroll down At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
 
     print(temp + info)
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
 
 
 def swipe_left():
@@ -920,15 +920,15 @@ def swipe_left():
               str(prevNode.scrollableX[prevNode.currentIndex] + 5) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n# Swipe Left At "
+    temp = "d.swipe(" + strTemp + ")\n    # Swipe Left At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
 
     print(temp + info)
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
 
 
 def swipe_right():
@@ -949,15 +949,15 @@ def swipe_right():
               str(prevNode.e_scrollableX[prevNode.currentIndex] - 5) + ", " + \
               str(prevNode.c_scrollableY[prevNode.currentIndex]) + ", steps=" + str(scrollSteps)
 
-    temp = "d.swipe(" + strTemp + ")\n# Swipe Right At "
+    temp = "d.swipe(" + strTemp + ")\n    # Swipe Right At "
 
     info = prevNode.name + ', ' + prevNode.scrollableView[prevNode.currentIndex] + ', ' + \
            prevNode.scrollableResourceId[prevNode.currentIndex]
 
     print(temp + info)
-    f.write(temp + info + "\n")
-    f.write("d.wait.update()\n")
-    f.write("time.sleep(2)\n")
+    f.write("    " + temp + info + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
 
 
 # Logic Checks
@@ -1026,8 +1026,8 @@ def checkKeyboard():
                 cmd = "adb shell input text " + inputText
                 subprocess.call(cmd)
                 print("Enter " + inputText + " into input field")
-                f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
-                f.write("time.sleep(1.5)\n")
+                f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
+                f.write("    time.sleep(1.5)\n")
 
                 if selectionType == 'click':
                     prevNode.cVisitFreq[prevNode.currentIndex] += 1
@@ -1051,8 +1051,8 @@ def checkKeyboard():
                 cmd = "adb shell input text " + inputText
                 subprocess.call(cmd)
                 print("Enter " + inputText + " into input field")
-                f.write("subprocess.call(" + "'" + cmd + "'" + ") # Enter " + inputText + " into input field\n")
-                f.write("time.sleep(1.5)\n")
+                f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
+                f.write("    time.sleep(1.5)\n")
 
             # Did not input any text
             else:
@@ -1106,7 +1106,7 @@ def checkKeyboardState():
     msg = "back() into Unknown State"
     selectionType = 'back'
     print(msg)
-    f.write("#" + msg + "\n")
+    f.write("    # " + msg + "\n")
     addNode(backState)
     return
 
@@ -1196,8 +1196,10 @@ def checkNode():
             temp = "d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()"
             print(temp)
             time.sleep(1.5)
-            f.write(temp + "\n")
-            f.write("# Permission State detected, 'Allow' selected\n")
+            f.write("    " + temp + "\n")
+            f.write("    d.wait.update()\n")
+            f.write("    time.sleep(1.5)\n")
+            f.write("    # Permission State detected, 'Allow' selected\n")
 
         # User set to always deny permissions
         else:
@@ -1206,8 +1208,10 @@ def checkNode():
             temp = "d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()"
             print(temp)
             time.sleep(1.5)
-            f.write(temp + "\n")
-            f.write("# Permission State detected, 'Deny' selected\n")
+            f.write("    " + temp + "\n")
+            f.write("    d.wait.update()\n")
+            f.write("    time.sleep(1.5)\n")
+            f.write("    # Permission State detected, 'Deny' selected\n")
 
         # Reset Flag
         permissionState = False
@@ -1313,7 +1317,7 @@ def checkNode():
             selfTransitionCount = selfTransitionCount + 1
             temp = "Self Transition in " + prevNode.name
             print(temp)
-            f.write("# " + temp + "\n")
+            f.write("    # " + temp + "\n")
 
             # prevNode stays the same
             return
@@ -1342,7 +1346,7 @@ def checkNode():
             temp = "Transition from " + prevNode.name + "(" + str(prevNode.depth) + ") to " + stateList[
                 index].name + "(" + str(stateList[index].depth) + ")"
             print(temp)
-            f.write("# " + temp + "\n")
+            f.write("    # " + temp + "\n")
 
             # Set current node as prevNode
             prevNode = stateList[index]
@@ -1372,10 +1376,10 @@ def checkCrash(currentState):
         crashNum = crashNum + 1
         temp = "-Possible Crash Occurred-"
         print(temp)
-        f.write("# " + temp + "\n")
+        f.write("    # " + temp + "\n")
         prevNode = m
         click(m.appXCoor, m.appYCoor)
-        f.write("# New Test Case \n")
+        f.write("    # Continue Testing \n")
 
         # Obtain current state after reopening app
         c_currentState = d.dump(compressed=True).encode('utf-8')
@@ -1393,7 +1397,7 @@ def checkCrash(currentState):
         msg = "Open app into Unknown State"
         selectionType = 'invalid'
         print(msg)
-        f.write("#" + msg + "\n")
+        f.write("    # " + msg + "\n")
         addNode(c_currentState)
         return True
 
@@ -1807,7 +1811,9 @@ while instCount < numberOfInstructions:
 if closeAppClean is False:
     d.press.home()
     d.wait.update()
-    f.write("d.press.home()\n")
+    f.write("    d.press.home()\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(1.5)\n\n\n")
 
 # Reset app to factory settings upon exit
 else:
@@ -1815,22 +1821,27 @@ else:
     if crashNum == 0:
         cmd = "adb shell pm clear " + m.package
         subprocess.call(cmd)
-        f.write("subprocess.call(" + cmd + ")")
+        f.write("    subprocess.call('" + cmd + "')\n")
+        f.write("    time.sleep(1.5)\n\n\n")
 
     # Do not reset app if crashes are found (Fail-safe)
     else:
         cmd = "adb shell am force-stop " + m.package
         subprocess.call(cmd)
-        f.write("subprocess.call(" + cmd + ")")
+        f.write("    subprocess.call('" + cmd + "')\n")
+        f.write("    time.sleep(1.5)\n\n\n")
 
-# Obtain elapsed tme
+# Obtain elapsed time
 eTime = time.time() - sTime
 
 # Update console and log
 print("End Test Case, Number of crashes detected: " + str(crashNum))
 print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
-f.write("# -End Test Case-\n")
-f.write("# -Number of crashes detected: " + str(crashNum) + "\n")
-f.write("# Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))) + "\n")
+# Allows for separation of pure testing and mutation testing
+f.write("if __name__ == '__main__':\n")
+f.write("    test()\n")
+f.write("    # -End Test Case-\n")
+f.write("    # -Number of crashes detected: " + str(crashNum) + "\n")
+f.write("    # Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))) + "\n")
 f.close()
 
