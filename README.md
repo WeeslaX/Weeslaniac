@@ -46,8 +46,7 @@ The list of libraries that requires installation (if not already done so) are as
 
 ```
 1. uiautomator
-2. networkx
-3. numpy
+2. numpy
 ```
 
 
