@@ -19,6 +19,7 @@ import hashlib
 
 
 # To generate hashed states
+# Misc
 def generateHashedState(state):
     global permissionState
     # Conditions
@@ -97,7 +98,7 @@ def generateHashedState(state):
         permissionState = True
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+contentDesc+longClickable+scroll)).digest().encode("base64")
 
 
 def generateHashedHierachy(state):

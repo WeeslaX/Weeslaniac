@@ -4,21 +4,14 @@
 # Description: Mutate Culebra test cases to detect problems in apps
 #              [Work in progress, currently a prototype with limited functionality]
 
-import xml.etree.ElementTree as ET
+
 import subprocess
 from uiautomator import device as d
-import sys
 import numpy as np
 import time
-import hashlib
-import random
-import os
 from Tkinter import *
 from tkMessageBox import *
 from dill.source import getsource
-
-# User defined inputs
-enableMutations = True
 
 # Static Values
 rotationDelay = 1.5
@@ -83,12 +76,13 @@ class UserNode:
 
 
 # GUI Interface
-def save(entries):
+def save(entries, checkboxes):
     global gui
     global testCasePath
     global testCaseName
     global package
     global startMutation
+    global enableMutation
 
     # Package Name
     package = str(entries[0].get())
@@ -101,6 +95,16 @@ def save(entries):
 
     # Start Mutation
     startMutation = int(entries[3].get())
+    # Negative startMutation
+    if startMutation < 0:
+        startMutation = 0
+
+    # Enable Mutation
+    temp = str(checkboxes[0].get())
+    if temp == '0':
+        enableMutation = False
+    else:
+        enableMutation = True
 
     # Close GUI
     showinfo("Success", "Settings Saved.")
@@ -114,11 +118,15 @@ def setupGUI():
     label = ["App Package Name: ", 'Test Case Path: ', 'Test Case name: ', 'Start Mutation: \n(0 - After S0)']
     default = ['it.feio.android.omninotes.foss', 'C:/Users/awslw/Desktop/FYP/AndroidViewClient-master/tools',
                'myTestCase', 0]
+    checkboxLabel = ['Enable Mutation']
 
+    # Widget Storage
     entries = []
-    temp = []
+    checkbox = []  # Container for all checkboxes
+    vars = []  # Keeps track of integer values of checkboxes (0 - False, 1 - True)
+
     # Gui Settings
-    gui.title("Setup")
+    gui.title("mutator_C Setup")
     gui["bg"] = 'black'
 
     # Automate Multiple Labels
@@ -136,8 +144,19 @@ def setupGUI():
         Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
         index = index + 1
 
+    # Automate checkboxes
+    cIndex = 0
+    for i in checkboxLabel:
+        var = IntVar()
+        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
+        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
+        checkbox[cIndex]
+        cIndex += 1
+        index += 1
+        vars.append(var)
+
     # Save button
-    Button(gui, text="Save", command=(lambda e=entries: save(e)), width=10, relief="groove")\
+    Button(gui, text="Save", command=(lambda v=vars, e=entries: save(e, v)), width=10, relief="groove")\
         .grid(row=index + 1, column=1, pady=4, sticky=W)
     gui.mainloop()
     gui.destroy()
@@ -234,11 +253,12 @@ def getInstructions(test):
     return
 
 
-# User defined inputs
+# (Default) User defined inputs
 testCasePath = ''
 testCaseName = ''
 package = ''
 startMutation = 0
+enableMutation = False
 
 # Override (GUI)
 try:
@@ -251,7 +271,6 @@ except:
 #  Initialization
 instList = np.array([])
 nodeList = []
-
 
 # Import test case script
 sys.path.append(testCasePath)
@@ -270,7 +289,7 @@ for i in range(len(instList)):
     nodeList.append(newNode)
 
 # User defined test case without mutations
-if enableMutations is False:
+if enableMutation is False:
     print("Start Normal Testing")
     # Benchmark
     sTime = time.time()
@@ -289,7 +308,6 @@ else:
     print("Start Mutation-based Testing after S" + str(startMutation))
     # Benchmark
     sTime = time.time()
-    # Refers to number of normal actions to be taken [Open app]
 
     # User defined operation
     for i in range(len(nodeList)):

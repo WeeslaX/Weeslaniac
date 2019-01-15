@@ -12,7 +12,7 @@ from tkMessageBox import *
 from dill.source import getsource
 
 # To be added to GUI
-enableMutation = True
+
 # Static values
 rotationDelay = 1.5
 
@@ -134,11 +134,12 @@ def rotation():
 
 # GUI Interface
 
-def save(entries):
+def save(entries, checkboxes):
     global gui
     global testCasePath
     global testCaseName
     global startMutation
+    global enableMutation
 
     # Test Case path
     testCasePath = str(entries[0].get())
@@ -148,6 +149,16 @@ def save(entries):
 
     # Start Mutation
     startMutation = int(entries[2].get())
+    # Negative startMutation
+    if startMutation < 0:
+        startMutation = 0
+
+    # Enable Mutation
+    temp = str(checkboxes[0].get())
+    if temp == '0':
+        enableMutation = False
+    else:
+        enableMutation = True
 
     showinfo("Success", "Settings Saved.")
     gui.quit()
@@ -159,11 +170,15 @@ def setupGUI():
     # Preset Values
     label = ['Test Case Path: ', 'Test Case name: ', 'Start Mutation: \n(0 - After Action #0)']
     default = ['C:/Users/awslw/Desktop/FYP/uiAutomator Dump', 'testCases', 0]
+    checkboxLabel = ['Enable Mutation']
 
-    entries = []
-    temp = []
+    # Widget Storage
+    entries = []        # Act as a container and keeps track of values stored in textbox
+    checkbox = []       # Container for all checkboxes
+    vars = []           # Keeps track of integer values of checkboxes (0 - False, 1 - True)
+
     # Gui Settings
-    gui.title("Setup")
+    gui.title("mutator_W Setup")
     gui["bg"] = 'black'
 
     # Automate Multiple Labels
@@ -181,8 +196,19 @@ def setupGUI():
         Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
         index = index + 1
 
+    # Automate checkboxes
+    cIndex = 0
+    for i in checkboxLabel:
+        var = IntVar()
+        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
+        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
+        checkbox[cIndex]
+        cIndex += 1
+        index += 1
+        vars.append(var)
+
     # Save button
-    Button(gui, text="Save", command=(lambda e=entries: save(e)), width=10, relief="groove")\
+    Button(gui, text="Save", command=(lambda v=vars, e=entries: save(e, v)), width=10, relief="groove")\
         .grid(row=index + 1, column=1, pady=4, sticky=W)
     gui.mainloop()
     gui.destroy()
@@ -236,7 +262,7 @@ def operationList():
         print("Commencing Test with Mutation after Action #" + str(startMutation))
         for i in range(len(nodeList)):
             nodeList[i].action()
-            if i >= startMutation:
+            if i >= enableMutation:
                 mutationDecision()
 
     # Invalid option
@@ -248,6 +274,7 @@ def operationList():
 # User defined Variables
 testCasePath = ''
 testCaseName = ''
+enableMutation = True
 startMutation = 0
 
 # Override (GUI)
@@ -257,6 +284,23 @@ try:
 except:
     print("Settings not set. Testing Aborted.")
     sys.exit()
+
+# Check test case locaton
+tcLocation = testCasePath + "/" + testCaseName +".py"
+tcExists = os.path.isfile(tcLocation)
+if tcExists is False:
+    print('Test Case File not found. Terminating Test')
+    sys.exit()
+
+# Check validity of test case
+f = open(tcLocation, "r")
+firstLine = f.read()
+if firstLine.find('uiautomator import device as d') < 0:
+    print("Invalid File. Terminating Test")
+    f.close()
+    sys.exit()
+else:
+    f.close()
 
 #  Initialization
 instList = np.array([])

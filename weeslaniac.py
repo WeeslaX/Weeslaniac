@@ -26,9 +26,6 @@ inputNum = '98'                     # Numerical half of inputText
 inputAlpha = 'ab'                   # Alphabetical half of inputText
 inputText = inputNum+inputAlpha     # Combines num and alphabet to form one string
 scrollSteps = 10                    # Keeps track of number of swipe/scroll steps
-alwaysAllowPermissions = True       # False implies always deny permissions
-inputTextOnce = True                # True - Write and close, False - Randomise between write and close
-closeAppClean = True                # True - Close app and remove all data, False - Preserve data upon exit
 
 # Operation Weights
 chanceOfNormalClicks = 1
@@ -497,7 +494,7 @@ def generateHashedState(state):
         permissionState = True
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+contentDesc+longClickable+scroll)).digest().encode("base64")
 
 
 def generateHashedHierarchy(state):
@@ -632,13 +629,16 @@ def getCurrentStateText(state):
 
 
 # Gui Setup
-def save(entries):
+def save(entries, checkboxes):
     global gui
     global appName
     global numberOfInstructions
     global deviceName
     global ssLocation
     global tcLocation
+    global alwaysAllowPermissions
+    global inputTextOnce
+    global closeAppClean
 
     # Store App Name
     appName = str(entries[0].get())
@@ -664,6 +664,28 @@ def save(entries):
     # Store test_case.py location
     tcLocation = str(entries[4].get())
 
+    # Enable allowing permissions
+    temp = str(checkboxes[0].get())
+    if temp == '0':
+        alwaysAllowPermissions = False
+    else:
+        alwaysAllowPermissions = True
+
+    # Enable input once algorithm
+    temp = str(checkboxes[1].get())
+    if temp == '0':
+        inputTextOnce = False
+    else:
+        inputTextOnce = True
+
+    # Enable reset app to factory
+    temp = str(checkboxes[2].get())
+    if temp == '0':
+        closeAppClean = False
+    else:
+        closeAppClean = True
+
+    # Save and close GUI interface
     showinfo("Success", "Settings Saved.")
     gui.quit()
 
@@ -676,11 +698,16 @@ def userInputSettings():
              'test_case.py Location:']
     default = ['Omni', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
                "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
+    checkboxLabel = ['Enable "Allow all Permissions"', 'Enable "Input into textbox once" Algorithm',
+                     'Enable "Reset data in App after testing"']
 
+    # Store widget and its contents
     entries = []
-    temp = []
+    checkbox = []
+    vars = []
+
     # Gui Settings
-    gui.title("Settings")
+    gui.title("Weeslanic Setup")
     gui["bg"] = 'black'
 
     # Automate Multiple Labels
@@ -698,8 +725,19 @@ def userInputSettings():
         Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
         index = index + 1
 
+    # Automate checkboxes
+    cIndex = 0
+    for i in checkboxLabel:
+        var = IntVar(value=1)
+        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
+        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
+        checkbox[cIndex]
+        cIndex += 1
+        index += 1
+        vars.append(var)
+
     # Save button
-    Button(gui, text="Save", command=(lambda e=entries: save(e)), width=10, relief="groove")\
+    Button(gui, text="Save", command=(lambda v=vars, e=entries: save(e, v)), width=10, relief="groove")\
         .grid(row=index + 1, column=1, pady=4, sticky=W)
     gui.mainloop()
     gui.destroy()
@@ -1744,9 +1782,12 @@ def operationDecision():
 
 
 # Initialise default User Inputs (Global)
-numberOfInstructions = 0
-appName = ''
-deviceName = ''
+numberOfInstructions = 0            # Number of legal actions to be run
+appName = ''                        # Stores app name
+deviceName = ''                     # Check device name to ensure device is connected
+alwaysAllowPermissions = True       # False implies always deny permissions
+inputTextOnce = True                # True - Write and close, False - Randomise between write and close
+closeAppClean = True                # True - Close app and remove all data, False - Preserve data upon exit
 
 # Override (GUI)
 try:
