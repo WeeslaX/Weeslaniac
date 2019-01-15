@@ -34,25 +34,27 @@ def generateHashedState(state):
     view = ''
     package = ''
     text = ''
+    contentDesc = ''
     longClickable = ''
     scroll = ''
     root = ET.fromstring(state)
+
     for elem in root.iter():
         strAttrib = str(elem.attrib)
         # Find clickable Views
         if clickCondition in strAttrib and enabledCondition in strAttrib:
             # Obtain package names
-            start = strAttrib.find("'package': '") + 12
-            end = strAttrib.find("'", start)
+            start = strAttrib.find("'package': ") + 12
+            end = strAttrib.find(",", start) - 1
             temp = strAttrib[start:end]
             package = str(temp)
             # Obtain view names
-            start = strAttrib.find("'class': '") + 10
+            start = strAttrib.find("'class': ") + 10
             end = strAttrib.find("'", start)
             temp = strAttrib[start:end]
             view = view+str(temp)
             # Obtain resource-id
-            start = strAttrib.find("'resource-id': '") + 16
+            start = strAttrib.find("'resource-id': ") + 16
             end = strAttrib.find("'", start)
             temp = strAttrib[start:end]
             # resource-id is empty
@@ -63,8 +65,8 @@ def generateHashedState(state):
             else:
                 resourceId = resourceId + temp
             # Obtain text
-            start = strAttrib.find("'text': '") + 9
-            end = strAttrib.find("'", start)
+            start = strAttrib.find("'text': ") + 9
+            end = strAttrib.find("}", start) - 1
             temp = strAttrib[start:end]
             # Text is empty
             if temp == '':
@@ -72,6 +74,15 @@ def generateHashedState(state):
                 text = text + temp
             else:
                 text = text + temp
+            # Obtain content-desc
+            start = strAttrib.find("'content-desc': ") + 17
+            end = strAttrib.find(",", start) - 1
+            temp = strAttrib[start:end]
+            if temp == '':
+                temp = "(no content-desc)"
+                contentDesc = contentDesc + temp
+            else:
+                contentDesc = contentDesc + temp
 
             # Long clickable
             if longClickCondition in strAttrib:
@@ -86,7 +97,7 @@ def generateHashedState(state):
         permissionState = True
 
     # Return Hash
-    return hashlib.md5((package+view+resourceId+text+longClickable+scroll)).digest().encode("base64")
+    return hashlib.md5((package+view+resourceId+longClickable+scroll)).digest().encode("base64")
 
 
 def generateHashedHierachy(state):
