@@ -338,4 +338,5 @@ operationList()
 
 # Obtain elapsed time
 eTime = time.time() - sTime
+print("- Test End -")
 print("Elapsed Time: " + str(time.strftime("%H:%M:%S", time.gmtime(eTime))))
