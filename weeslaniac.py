@@ -15,7 +15,6 @@ from tkMessageBox import *
 
 # Installed
 from uiautomator import device as d
-import networkx as nx
 import numpy as np
 
 
@@ -151,14 +150,6 @@ class MainNode:
 
         # Screen shot of State
         d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
-
-        # Add and Display with matlibplot
-        # G.add_node(self.name)
-        # pos = nx.spring_layout(G)
-        # nx.draw_networkx(G, pos, node_color='g', node_size=1000)
-        # plt.axis('off')
-        # plt.draw()
-        # plt.pause(1)
 
 
 class Node:
@@ -390,29 +381,10 @@ class Node:
                 # Screen shot of State
                 d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
 
-                # Add and Display with matlibplot
-                # plt.clf()  # Clear previous graph
-                # G.add_edges_from([(prevNode.name, self.name)])
-                # G.add_edges_from([(self.name, prevNode.name)])
-                # pos = nx.spring_layout(G)
-                # nx.draw_networkx(G, pos, node_color='g', node_size=1000)
-                # plt.axis('off')
-                # plt.draw()
-                # plt.pause(1)
-
         # Normal Operation (Have clickable views)
         else:
             # Screen shot of State
             d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
-
-        # Add and Display with matlibplot
-        # plt.clf()  # Clear previous graph
-        # G.add_edges_from([(prevNode.name, self.name)])
-        # pos = nx.spring_layout(G)
-        # nx.draw_networkx(G, pos, node_color='g', node_size=1000)
-        # plt.axis('off')
-        # plt.draw()
-        # plt.pause(1)
 
 
 # Misc
@@ -762,6 +734,7 @@ def back(text, keyboard=False):
     global stateList
     global backFlag
     global selectionType
+    global m
 
     # Set back() flag to True to skip nodeCheck
     backFlag = True
@@ -790,14 +763,22 @@ def back(text, keyboard=False):
     if keyboard is False:
         # back() into same state - Activity cannot be back()
         if backState_h == prevNode.state:
-            # Click on the first clickable object to exit
-            d(clickable=True).click()
-            d.wait.update()
-            f.write("    d(clickable=True).click()\n    # Within a state that cannot be back()\n")
-            f.write("    d.wait.update()\n")
-            f.write("    time.sleep(1.5)\n")
-            print("Within a state that cannot be back()")
-            time.sleep(1.5)
+            # No clickable view in a state which cannot be back()
+            if len(prevNode.clickableXCoor) == 0:
+                print("No clickable views, force stopping app")
+                cmd = "adb shell am force-stop " + m.package
+                subprocess.call(cmd)
+                f.write("    subprocess.call('" + cmd + "')\n")
+                f.write("    time.sleep(1.5)\n\n\n")
+                prevNode = m
+                print("Re-opening app")
+                click(m.appXCoor, m.appYCoor)
+
+            # Randomly select one clickable view on page
+            else:
+                print("Within a state that cannot be back(), selecting a random clickable view")
+                prevNode.currentIndex = random.randint(0, len(prevNode.clickableXCoor)-1)
+                click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
 
             # Obtain new state
             backState = d.dump(compressed=True).encode('utf-8')
@@ -811,6 +792,9 @@ def back(text, keyboard=False):
         prevNode = tempNode
         back("Still in 3rd party app")
         return
+
+    backState = d.dump(compressed=True).encode('utf-8')
+    backState_h = generateHashedState(backState)
 
     # back() to known state
     for i in range(len(stateList)):
@@ -831,6 +815,7 @@ def back(text, keyboard=False):
 
 def click(xCoor, yCoor):
     global prevNode
+    global m
     # Normal Operation if current state is Main screen
     if prevNode.state == m.state:
         xCoor_c = xCoor + 10
@@ -1802,7 +1787,6 @@ checkEmulator()
 setupLogFile()
 
 # Initialization
-G = nx.MultiDiGraph()       # Create Visual Graph
 stateCount = 0              # Keeps track of number of States
 stateList = []              # Keeps track of states
 invalidStateList = []       # Keeps track of invalid states (No clickable views)
