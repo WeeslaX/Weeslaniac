@@ -664,6 +664,38 @@ def addNode(state):
     return
 
 
+def handlePermission():
+    global alwaysAllowPermissions
+    global permissionState
+
+    # User set to always allow permissions
+    if alwaysAllowPermissions is True:
+        d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()
+        d.wait.update()
+        temp = "d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()"
+        print(temp)
+        time.sleep(1.5)
+        f.write("    " + temp + "\n")
+        f.write("    d.wait.update()\n")
+        f.write("    time.sleep(1.5)\n")
+        f.write("    # Permission State detected, 'Allow' selected\n")
+
+    # User set to always deny permissions
+    else:
+        d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()
+        d.wait.update()
+        temp = "d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()"
+        print(temp)
+        time.sleep(1.5)
+        f.write("    " + temp + "\n")
+        f.write("    d.wait.update()\n")
+        f.write("    time.sleep(1.5)\n")
+        f.write("    # Permission State detected, 'Deny' selected\n")
+
+    # Reset Flag
+    permissionState = False
+
+
 # Emulator Operations
 def m_back(text):
     # Manual back() without state checking [Close keyboard, close error pop up]
@@ -1105,33 +1137,7 @@ def checkNode():
 
     # Check if current state is permission State
     if permissionState is True:
-
-        # User set to always allow permissions
-        if alwaysAllowPermissions is True:
-            d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()
-            d.wait.update()
-            temp = "d(resourceId='com.android.packageinstaller:id/permission_allow_button').click()"
-            print(temp)
-            time.sleep(1.5)
-            f.write("    " + temp + "\n")
-            f.write("    d.wait.update()\n")
-            f.write("    time.sleep(1.5)\n")
-            f.write("    # Permission State detected, 'Allow' selected\n")
-
-        # User set to always deny permissions
-        else:
-            d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()
-            d.wait.update()
-            temp = "d(resourceId='com.android.packageinstaller:id/permission_deny_button').click()"
-            print(temp)
-            time.sleep(1.5)
-            f.write("    " + temp + "\n")
-            f.write("    d.wait.update()\n")
-            f.write("    time.sleep(1.5)\n")
-            f.write("    # Permission State detected, 'Deny' selected\n")
-
-        # Reset Flag
-        permissionState = False
+        handlePermission()
 
         # Reset current state
         currentState = d.dump(compressed=True).encode('utf-8')
@@ -1697,12 +1703,24 @@ m = MainNode(d.dump(compressed=True).encode('utf-8'))
 prevNode = m
 click(prevNode.appXCoor, prevNode.appYCoor)
 
-# Setup App's Main Activity
+# Check permission flag of the first activity
+generateHashedState(d.dump(compressed=True).encode('utf-8'))
+
+# Handle Starting Permissions
+while permissionState is True:
+    # Permission handler
+    handlePermission()
+    # Check permission flag of the next activity
+    currentState = d.dump(compressed=True).encode('utf-8')
+
+
+# Setup App's First Activity
 temp = Node('S'+str(stateCount), d.dump(compressed=True).encode('utf-8'), 1)
 stateList.append(temp)
 m.package = stateList[0].package     # Use Main Activity's package name
 prevNode = stateList[stateCount]
 stateCount = stateCount + 1
+
 
 # Random Weighted Algorithm, limited to number of instructions
 instCount = 0
