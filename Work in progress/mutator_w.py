@@ -11,11 +11,6 @@ from Tkinter import *
 from tkMessageBox import *
 from dill.source import getsource
 
-# To be added to GUI
-
-# Static values
-rotationDelay = 1.5
-
 class Main:
 
     def __init__(self, inst):
@@ -100,6 +95,170 @@ class TestNode:
             return
 
 
+# GUI Interface
+def setupGUI():
+    global gui
+    global varsList
+    global uLabel
+    # Preset Values
+    label = ['Test Case Path: ', 'Test Case name: ', 'Start Mutation: \n(0 - After Action #0)']
+    default = ['C:/Users/awslw/Desktop/FYP/uiAutomator Dump', 'testCases', 0]
+    checkboxLabel = ['Enable Mutation']
+    mutationLabel = ['Rotation-based', 'Screen Off/On']
+
+    # Widget Storage
+    entries = []        # Act as a container and keeps track of values stored in textbox
+    checkbox = []       # Container for all checkboxes
+    varsList = []           # Keeps track of integer values of checkboxes (0 - False, 1 - True)
+
+    # Gui Settings
+    gui.title("mutator_W Setup")
+    gui["bg"] = 'black'
+
+    # Multiple Labels Automated
+    index = 0
+    for i in label:
+        Label(text=i, fg='white', bg='black').grid(row=index, column=0, sticky=W, pady=5)
+        index = index + 1
+
+    # Preset Entry fields Automated
+    index = 0
+    for i in default:
+        entries.append(Entry(gui, width=50))
+        entries[index].insert(0, str(i))
+        entries[index].grid(row=index, column=1, sticky=W, pady=5)
+        Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
+        index = index + 1
+
+    # Mutations Update label
+    uLabel = Label(gui, text='Mutations: -', bg='black', fg='white')
+    uLabel.grid(row=index, column=1, sticky=W, pady=5)
+    index += 1
+
+    # Mutation Checkbox (with command)
+    cIndex = 0
+    var = IntVar()
+    checkbox.append(Checkbutton(gui, text=checkboxLabel[cIndex], bg='black', fg='forest green', variable=var,
+                                command=(lambda ml=mutationLabel: additionalCheckboxes(ml))))
+    checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
+    cIndex += 1
+    index += 1
+    varsList.append(var)
+
+    # Save button
+    Button(gui, text="Save", command=(lambda e=entries: save_button(e)), width=10, relief="groove")\
+        .grid(row=index + 1, column=1, pady=4, sticky=W)
+    gui.mainloop()
+    gui.destroy()
+
+
+def save_button(entries):
+    global gui
+    global testCasePath
+    global testCaseName
+    global startMutation
+    global enableMutation
+    global varsList
+
+    # Test Case path
+    testCasePath = str(entries[0].get())
+
+    # Test Case name
+    testCaseName = str(entries[1].get())
+
+    # Start Mutation
+    startMutation = int(entries[2].get())
+    # Negative startMutation
+    if startMutation < 0:
+        startMutation = 0
+
+    # Enable Mutation
+    temp = str(varsList[0].get())
+    if temp == '0':
+        enableMutation = False
+    else:
+        enableMutation = True
+
+    showinfo("Success", "Settings Saved.")
+    gui.quit()
+
+
+def additionalCheckboxes(mutationLabel):
+    global varsList
+    global gui
+    global uLabel
+    global rotationEnabled
+    global screenOnOffEnabled
+
+    checkbox = []
+    index = 0
+
+    # When mutation is enabled
+    if varsList[0].get() == 1:
+        # Create a second window
+        secondGui = Toplevel(gui)
+        secondGui.title("Mutation Types")
+        secondGui["bg"] = 'black'
+
+        # Display checkboxes in new window
+        for i in mutationLabel:
+            var = IntVar()
+            checkbox.append(Checkbutton(secondGui, text=i, bg='black', fg='forest green', variable=var))
+            checkbox[index].grid(row=index, column=0, sticky=W, pady=5)
+            index += 1
+            varsList.append(var)
+
+        # Obtain # of mutations
+        numMutation = len(checkbox)
+
+        # Ok Button
+        b = Button(secondGui, text="Ok", command=lambda num=numMutation: ok_button(num, secondGui), width=8,
+                   relief="groove")
+        b.grid(row=index + 1, column=0, pady=4)
+
+        secondGui.mainloop()
+        secondGui.destroy()
+
+    # Mutations disabled
+    else:
+        screenOnOffEnabled = False
+        rotationEnabled = False
+        uLabel.config(text="Mutations: - ")
+
+
+def ok_button(numOfMutations, secondGui):
+    global varsList
+    global rotationEnabled
+    global screenOnOffEnabled
+    global uLabel
+
+    mStr = 'Mutations: '
+
+    # Obtain index of mutations in vars
+    mStart = len(varsList) - numOfMutations
+
+    # Get Rotation
+    temp = varsList[mStart].get()
+    if temp == 1:
+        rotationEnabled = True
+        mStr = mStr + ' Rotation '
+    else:
+        rotationEnabled = False
+
+    # Get screen on/off
+    temp = varsList[mStart + 1].get()
+    if temp == 1:
+        screenOnOffEnabled = True
+        mStr = mStr + ' Screen Off/On '
+    else:
+        screenOnOffEnabled = False
+
+    # Update Label
+    uLabel.configure(text=mStr)
+
+    secondGui.quit()
+
+
 # Mutation types
 def rotation():
     print("Rotation Test Started")
@@ -132,86 +291,26 @@ def rotation():
     time.sleep(rotationDelay)
 
 
-# GUI Interface
+def screen_off_on():
+    print("Starting Screen On/Off test")
+    # Screen off
+    d.screen.off()
+    d.wait.update()
+    time.sleep(2.5)
 
-def save(entries, checkboxes):
-    global gui
-    global testCasePath
-    global testCaseName
-    global startMutation
-    global enableMutation
-
-    # Test Case path
-    testCasePath = str(entries[0].get())
-
-    # Test Case name
-    testCaseName = str(entries[1].get())
-
-    # Start Mutation
-    startMutation = int(entries[2].get())
-    # Negative startMutation
-    if startMutation < 0:
-        startMutation = 0
-
-    # Enable Mutation
-    temp = str(checkboxes[0].get())
-    if temp == '0':
-        enableMutation = False
-    else:
-        enableMutation = True
-
-    showinfo("Success", "Settings Saved.")
-    gui.quit()
+    # Screen on
+    d.screen.on()
+    d.wait.update()
+    time.sleep(1)
 
 
-def setupGUI():
-    global gui
+# Logic control for mutations
+def mutationDecision():
+    if screenOnOffEnabled is True:
+        screen_off_on()
 
-    # Preset Values
-    label = ['Test Case Path: ', 'Test Case name: ', 'Start Mutation: \n(0 - After Action #0)']
-    default = ['C:/Users/awslw/Desktop/FYP/uiAutomator Dump', 'testCases', 0]
-    checkboxLabel = ['Enable Mutation']
-
-    # Widget Storage
-    entries = []        # Act as a container and keeps track of values stored in textbox
-    checkbox = []       # Container for all checkboxes
-    vars = []           # Keeps track of integer values of checkboxes (0 - False, 1 - True)
-
-    # Gui Settings
-    gui.title("mutator_W Setup")
-    gui["bg"] = 'black'
-
-    # Automate Multiple Labels
-    index = 0
-    for i in label:
-        Label(text=i, fg='white', bg='black').grid(row=index, column=0, sticky=W, pady=5)
-        index = index + 1
-
-    # Automate Preset Entry fields
-    index = 0
-    for i in default:
-        entries.append(Entry(gui, width=50))
-        entries[index].insert(0, str(i))
-        entries[index].grid(row=index, column=1, sticky=W, pady=5)
-        Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
-        index = index + 1
-
-    # Automate checkboxes
-    cIndex = 0
-    for i in checkboxLabel:
-        var = IntVar()
-        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
-        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
-        checkbox[cIndex]
-        cIndex += 1
-        index += 1
-        vars.append(var)
-
-    # Save button
-    Button(gui, text="Save", command=(lambda v=vars, e=entries: save(e, v)), width=10, relief="groove")\
-        .grid(row=index + 1, column=1, pady=4, sticky=W)
-    gui.mainloop()
-    gui.destroy()
+    if rotationEnabled is True:
+        rotation()
 
 
 # Obtain instructions from string
@@ -242,13 +341,8 @@ def getInstructions(test):
     return
 
 
-# List of mutations
-def mutationDecision():
-    rotation()
-
-
 # List of all possible test types
-def operationList():
+def operation():
     global enableMutation
 
     # Full Test without mutation
@@ -276,6 +370,12 @@ testCasePath = ''
 testCaseName = ''
 enableMutation = True
 startMutation = 0
+varsList = []
+rotationEnabled = False
+screenOnOffEnabled = False
+
+# Static values
+rotationDelay = 1.5
 
 # Override (GUI)
 try:
@@ -284,6 +384,7 @@ try:
 except:
     print("Settings not set. Testing Aborted.")
     sys.exit()
+
 
 # Check test case locaton
 tcLocation = testCasePath + "/" + testCaseName +".py"
@@ -334,7 +435,7 @@ if d.orientation == 'left' or d.orientation == 'right':
 sTime = time.time()
 
 # Operation Selection
-operationList()
+operation()
 
 # Obtain elapsed time
 eTime = time.time() - sTime
