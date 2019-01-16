@@ -64,9 +64,7 @@ weeslaniac.py
 
 3. A "Settings" pop-up will be displayed:
 
-![Screenshot](Settings.PNG)
-
-- "App Name" refers to the target app to be tested
+- "App Name" refers to the target app to be tested. (A unique substring of the app name required)
 - "# of actions" refers to the maximum number of actions (Eg: click, swipe, etc) before the testing terminates.
 - "Device" refers to the target device's name that is currently connected. You can check the device name using:
 ```bash
@@ -78,12 +76,12 @@ adb devices
 4. Select "Save" to start fuzzing.
 
 
-## Work In Progress
+## Future Enhancements (In order of priorities)
 
-- Adding a "mutation" feature as a separate extension to the fuzzing tool.
-- Simple Terminal interface that provides all the neccessary tools to manage and run the fuzzing tool.
 - Adding more user options to the "Settings" pop-up box, such as action percentage and input text.
-- Visual node diagram that maps and links each screenshot states with its respective actions.
+- Simple Terminal interface that provides all the neccessary tools to manage and run the fuzzing tool.
 - Allows interaction with 3rd party apps.
+- Adding a "mutate" feature as a separate script that complements the fuzzing tool.
 - Explore account registration capabilities.
-- Add capability to fuzz multiple devices at once.
+- Implement drag capability.
+- Visual node diagram that maps and links each screenshot states with its respective actions.
