@@ -41,7 +41,6 @@ doNotCloseKeyboard = 10 - closeKeyboard
 # Static Weights
 defaultWeight = 40
 baseWeight = 5
-inputTextWeight = 2
 selfTransitionWeight = 2
 crashWeight = 2
 invalidTransitionWeight = 1
@@ -387,7 +386,7 @@ class Node:
             d.screenshot(ssLocation + self.name + '.png')  # Screenshot of state
 
 
-# Misc
+# Hashed state generation
 def generateHashedState(state):
     global permissionState
     # Conditions
@@ -474,6 +473,122 @@ def generateHashedHierarchy(state):
     return hashlib.md5(state).digest().encode("base64")
 
 
+# Gui Setup
+def userInputSettings():
+    global gui
+
+    # Preset Values
+    label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
+             'test_case.py Location:']
+    default = ['Omni', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
+               "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
+    checkboxLabel = ['Enable "Allow all Permissions"', 'Enable "Input into textbox once" Algorithm',
+                     'Enable "Reset data in App after testing"']
+
+    # Store widget and its contents
+    entries = []
+    checkbox = []
+    varsList = []
+
+    # Gui Settings
+    gui.title("Weeslanic Setup")
+    gui["bg"] = 'black'
+
+    # Automate Multiple Labels
+    index = 0
+    for i in label:
+        Label(text=i, fg='white', bg='black').grid(row=index, column=0, sticky=W, pady=5)
+        index = index + 1
+
+    # Automate Preset Entry fields
+    index = 0
+    for i in default:
+        entries.append(Entry(gui, width=50))
+        entries[index].insert(0, str(i))
+        entries[index].grid(row=index, column=1, sticky=W, pady=5)
+        Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
+        index = index + 1
+
+    # Automate checkboxes
+    cIndex = 0
+    for i in checkboxLabel:
+        var = IntVar(value=1)
+        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
+        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
+        checkbox[cIndex]
+        cIndex += 1
+        index += 1
+        varsList.append(var)
+
+    # Save button
+    Button(gui, text="Save", command=(lambda v=varsList, e=entries: save_button(e, v)), width=10, relief="groove")\
+        .grid(row=index + 1, column=1, pady=4, sticky=W)
+    gui.mainloop()
+    gui.destroy()
+
+
+def save_button(entries, checkboxes):
+    global gui
+    global appName
+    global numberOfInstructions
+    global deviceName
+    global ssLocation
+    global tcLocation
+    global alwaysAllowPermissions
+    global inputTextOnce
+    global closeAppClean
+
+    # Store App Name
+    appName = str(entries[0].get())
+
+    # Store number of actions
+    try:
+        numberOfInstructions = int(entries[1].get())
+
+        # Check zero or negative number of actions
+        if numberOfInstructions <= 0:
+            print("Using default number of actions (500)")
+            numberOfInstructions = 500
+    except ValueError:
+        showerror("Invalid input", "Enter an integer for # of Actions")
+        return
+
+    # Store device name
+    deviceName = str(entries[2].get())
+
+    # Store Screenshot location
+    ssLocation = str(entries[3].get())
+
+    # Store test_case.py location
+    tcLocation = str(entries[4].get())
+
+    # Enable allowing permissions
+    temp = str(checkboxes[0].get())
+    if temp == '0':
+        alwaysAllowPermissions = False
+    else:
+        alwaysAllowPermissions = True
+
+    # Enable input once algorithm
+    temp = str(checkboxes[1].get())
+    if temp == '0':
+        inputTextOnce = False
+    else:
+        inputTextOnce = True
+
+    # Enable reset app to factory
+    temp = str(checkboxes[2].get())
+    if temp == '0':
+        closeAppClean = False
+    else:
+        closeAppClean = True
+
+    # Save and close GUI interface
+    showinfo("Success", "Settings Saved.")
+    gui.quit()
+
+
+# Misc
 def setupLogFile():
     global f
     global tcLocation
@@ -547,172 +662,6 @@ def addNode(state):
     stateCount = stateCount + 1
     print("New node added: " + prevNode.name)
     return
-
-
-def getCurrentStateText(state):
-    global prevNode
-    global inputText
-    clickCondition = "'clickable': 'true'"
-    enabledCondition = "'enabled': 'true'"
-    text = []
-    root = ET.fromstring(state)
-    # Find only text within Hierarchy
-    for elem in root.iter():
-        strAttrib = str(elem.attrib)
-        # Find clickable Views
-        if clickCondition in strAttrib and enabledCondition in strAttrib:
-            # Obtain text
-            start = strAttrib.find("'text': ") + 9
-            end = strAttrib.find("}", start) - 1
-            temp = strAttrib[start:end]
-            # Text is empty
-            if temp == '':
-                temp = '(No text)'
-                text.append(temp)
-            else:
-                text.append(temp)
-
-    # Generate hashed state for comparison purposes
-    h_state = generateHashedState(state)
-
-    # Self transition after keyboard close
-    if h_state == prevNode.state:
-        return text[prevNode.currentIndex]
-
-    # New state after keyboard close, do randomised input algorithm instead
-    else:
-        # Decision to enter input
-        decisionEnter = random.choice([0] * enterInput + [1] * doNotEnterInput)
-
-        # Enter inputText into input field
-        if decisionEnter == 0:
-            cmd = "adb shell input text " + inputText
-            subprocess.call(cmd)
-            print("Enter " + inputText + " into input field")
-            f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
-            f.write("    time.sleep(1.5)\n")
-
-        # Did not input any text
-        else:
-            print("Did not input any text.")
-
-        # Prevent text from being entered twice
-        return inputText
-
-
-# Gui Setup
-def save(entries, checkboxes):
-    global gui
-    global appName
-    global numberOfInstructions
-    global deviceName
-    global ssLocation
-    global tcLocation
-    global alwaysAllowPermissions
-    global inputTextOnce
-    global closeAppClean
-
-    # Store App Name
-    appName = str(entries[0].get())
-
-    # Store number of actions
-    try:
-        numberOfInstructions = int(entries[1].get())
-
-        # Check zero or negative number of actions
-        if numberOfInstructions <= 0:
-            print("Using default number of actions (500)")
-            numberOfInstructions = 500
-    except ValueError:
-        showerror("Invalid input", "Enter an integer for # of Actions")
-        return
-
-    # Store device name
-    deviceName = str(entries[2].get())
-
-    # Store Screenshot location
-    ssLocation = str(entries[3].get())
-
-    # Store test_case.py location
-    tcLocation = str(entries[4].get())
-
-    # Enable allowing permissions
-    temp = str(checkboxes[0].get())
-    if temp == '0':
-        alwaysAllowPermissions = False
-    else:
-        alwaysAllowPermissions = True
-
-    # Enable input once algorithm
-    temp = str(checkboxes[1].get())
-    if temp == '0':
-        inputTextOnce = False
-    else:
-        inputTextOnce = True
-
-    # Enable reset app to factory
-    temp = str(checkboxes[2].get())
-    if temp == '0':
-        closeAppClean = False
-    else:
-        closeAppClean = True
-
-    # Save and close GUI interface
-    showinfo("Success", "Settings Saved.")
-    gui.quit()
-
-
-def userInputSettings():
-    global gui
-
-    # Preset Values
-    label = ['App Name (Case Sensitive):', '# of Actions:', 'Device: ', 'Screenshot Location:',
-             'test_case.py Location:']
-    default = ['Omni', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
-               "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
-    checkboxLabel = ['Enable "Allow all Permissions"', 'Enable "Input into textbox once" Algorithm',
-                     'Enable "Reset data in App after testing"']
-
-    # Store widget and its contents
-    entries = []
-    checkbox = []
-    vars = []
-
-    # Gui Settings
-    gui.title("Weeslanic Setup")
-    gui["bg"] = 'black'
-
-    # Automate Multiple Labels
-    index = 0
-    for i in label:
-        Label(text=i, fg='white', bg='black').grid(row=index, column=0, sticky=W, pady=5)
-        index = index + 1
-
-    # Automate Preset Entry fields
-    index = 0
-    for i in default:
-        entries.append(Entry(gui, width=50))
-        entries[index].insert(0, str(i))
-        entries[index].grid(row=index, column=1, sticky=W, pady=5)
-        Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
-        index = index + 1
-
-    # Automate checkboxes
-    cIndex = 0
-    for i in checkboxLabel:
-        var = IntVar(value=1)
-        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
-        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
-        checkbox[cIndex]
-        cIndex += 1
-        index += 1
-        vars.append(var)
-
-    # Save button
-    Button(gui, text="Save", command=(lambda v=vars, e=entries: save(e, v)), width=10, relief="groove")\
-        .grid(row=index + 1, column=1, pady=4, sticky=W)
-    gui.mainloop()
-    gui.destroy()
 
 
 # Emulator Operations
@@ -865,7 +814,6 @@ def long_click(xCoor,yCoor):
     time.sleep(1)
 
 
-
 # Scroll/Swipe Operations
 def scroll_up():
     global prevNode
@@ -1008,7 +956,6 @@ def checkKeyboard():
     global closeKeyboard
     global doNotCloseKeyboard
     global selfTransitionCount
-    global inputTextWeight
     global prevNode
     global lcIndex
     global selectionType
@@ -1029,40 +976,25 @@ def checkKeyboard():
                 m_back("Close Keyboard")
                 return
 
-            # Get current state's text after manual back()
+            # Remove existing text from textbox
+            d(focused=True).clear_text()
+            d.wait.update()
+            time.sleep(1.5)
+            # Enter inputText into textbox
+            d(focused=True).set_text(inputText)
+            d.wait.update()
+            time.sleep(1.5)
+            print("Removed any text and entered " + inputText)
+            f.write("    d(focused=True).clear_text()\n")
+            f.write("    d.wait.update()\n")
+            f.write("    time.sleep(1.5)\n")
+            f.write("    # Removed any text\n")
+            f.write("    d(focused=True).set_text('" + inputText + "')\n")
+            f.write("    d.wait.update()\n")
+            f.write("    time.sleep(1.5)\n")
+            f.write("    # Entered " + inputText + "\n")
+            # Use node check to determine weights
             m_back("Close Keyboard")
-            keyboardState = d.dump(compressed=True).encode('utf-8')
-            currentText = getCurrentStateText(keyboardState)
-
-            # Input Text already exists
-            if inputNum in currentText or inputAlpha in currentText:
-                print("Text already exists/Randomised Algorithm")
-                # Check state
-                checkKeyboardState()
-                # Update self transition count
-                selfTransitionCount += 1
-                return
-
-            # Input text does not exist
-            else:
-                # Enter input text
-                cmd = "adb shell input text " + inputText
-                subprocess.call(cmd)
-                print("Enter " + inputText + " into input field")
-                f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
-                f.write("    time.sleep(1.5)\n")
-
-                if selectionType == 'click':
-                    prevNode.cVisitFreq[prevNode.currentIndex] += 1
-                    prevNode.cTransitionWeight[prevNode.currentIndex] = inputTextWeight
-
-                if selectionType == 'long-click':
-                    prevNode.lcVisitFreq[lcIndex] += 1
-                    prevNode.lcTransitionWeight[lcIndex] = inputTextWeight
-
-                # Check state
-                checkKeyboardState()
-                return
 
         # Randomise write and close
         else:
@@ -1093,44 +1025,6 @@ def checkKeyboard():
             return
 
     # Soft keyboard not found
-    return
-
-
-def checkKeyboardState():
-    global prevNode
-    global stateCount
-    global stateList
-    global backFlag
-    # Set back() flag to True to skip nodeCheck
-    backFlag = True
-
-    # Checking state after input text
-    backState = d.dump(compressed=True).encode('utf-8')
-    backState_h = generateHashedState(backState)
-
-    # Closed keyboard within 3rd party app
-    package = checkCurrentPackage(backState)
-    if package != m.package:
-        # Create a temporary node to store current state
-        tempNode = Node("cantBack", backState, -1)
-        prevNode = tempNode
-        back("Still in 3rd party app")
-        return
-
-    # Closed keyboard to known state
-    for i in range(len(stateList)):
-        # If back() to known state
-        if backState_h == stateList[i].state:
-            print("back() into Existing State: " + stateList[i].name)
-            prevNode = stateList[i]
-            return
-
-    # Closed keyboard to unknown state, Add new node
-    msg = "back() into Unknown State"
-    selectionType = 'back'
-    print(msg)
-    f.write("    # " + msg + "\n")
-    addNode(backState)
     return
 
 
