@@ -104,7 +104,7 @@ def setupGUI():
     label = ['Test Case Path: ', 'Test Case name: ', 'Start Mutation: \n(0 - After Action #0)']
     default = ['C:/Users/awslw/Desktop/FYP/uiAutomator Dump', 'testCases', 0]
     checkboxLabel = ['Enable Mutation']
-    mutationLabel = ['Rotation-based', 'Screen Off/On']
+    mutationLabel = ['Rotation-based', 'Screen Off/On', "Open/Close Recent Tab"]
 
     # Widget Storage
     entries = []        # Act as a container and keeps track of values stored in textbox
@@ -131,7 +131,7 @@ def setupGUI():
         index = index + 1
 
     # Mutations Update label
-    uLabel = Label(gui, text='Mutations: -', bg='black', fg='white')
+    uLabel = Label(gui, text='Mutations:', bg='black', fg='white')
     uLabel.grid(row=index, column=1, sticky=W, pady=5)
     index += 1
 
@@ -223,39 +223,48 @@ def additionalCheckboxes(mutationLabel):
     else:
         screenOnOffEnabled = False
         rotationEnabled = False
-        uLabel.config(text="Mutations: - ")
+        uLabel.config(text="Mutations:")
 
 
 def ok_button(numOfMutations, secondGui):
     global varsList
     global rotationEnabled
     global screenOnOffEnabled
+    global openRecentEnabled
     global uLabel
 
-    mStr = 'Mutations: '
+    mStr = 'Mutations:'
 
     # Obtain index of mutations in vars
     mStart = len(varsList) - numOfMutations
 
-    # Get Rotation
+    # Get Rotation Decision
     temp = varsList[mStart].get()
     if temp == 1:
         rotationEnabled = True
-        mStr = mStr + ' Rotation '
+        mStr = mStr + '\n - Rotation '
     else:
         rotationEnabled = False
 
-    # Get screen on/off
+    # Get screen on/off decision
     temp = varsList[mStart + 1].get()
     if temp == 1:
         screenOnOffEnabled = True
-        mStr = mStr + ' Screen Off/On '
+        mStr = mStr + '\n - Screen Off/On '
     else:
         screenOnOffEnabled = False
 
+    # Get recent tab decision
+    temp = varsList[mStart + 2].get()
+    if temp == 1:
+        openRecentEnabled = True
+        mStr = mStr + "\n - Open/Close Recent Tab"
+    else:
+        openRecentEnabled = False
+
     # Update Label
     uLabel.configure(text=mStr)
-
+    uLabel.configure(justify='left')
     secondGui.quit()
 
 
@@ -304,6 +313,16 @@ def screen_off_on():
     time.sleep(1)
 
 
+def open_recent():
+    print('Start "Open Recent" Test')
+    d.press.recent()
+    d.wait.update()
+    time.sleep(1.5)
+    d.press.back()
+    d.wait.update()
+    time.sleep(1.5)
+
+
 # Logic control for mutations
 def mutationDecision():
     if screenOnOffEnabled is True:
@@ -311,6 +330,9 @@ def mutationDecision():
 
     if rotationEnabled is True:
         rotation()
+
+    if openRecentEnabled is True:
+        open_recent()
 
 
 # Obtain instructions from string
@@ -373,6 +395,7 @@ startMutation = 0
 varsList = []
 rotationEnabled = False
 screenOnOffEnabled = False
+openRecentEnabled = False
 
 # Static values
 rotationDelay = 1.5
