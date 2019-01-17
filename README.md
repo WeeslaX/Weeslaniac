@@ -9,7 +9,6 @@
 
 - Compatible only with **Android** devices and emulators.
 - Compatible with any OS that can run Python.
-- Works well with apps that do not require registration.
 - Crash detection and continuation capabilities. 
 - Outputs a python script that replicates all actions performed by the fuzzing tool for crash analysis.
 - Takes screenshot of unique screen states for crash analysis.
