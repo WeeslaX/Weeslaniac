@@ -2,7 +2,7 @@
 
 
 ## Description
-**Weeslaniac** is a pure python based script that uses weighted random algorithm to fuzz an android application's GUI to primarily detect crashes and potentially other GUI related vulerabilities.
+**Weeslaniac** is a pure python based script that uses both static and dynamic weighted random selection algorithm to fuzz an android application's GUI to primarily detect crashes and potentially other GUI related vulerabilities.
 
 
 ## Features
