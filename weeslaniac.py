@@ -31,6 +31,7 @@ chanceOfNormalClicks = 1
 chanceOfLongClicks = 1
 chanceOfScroll = 1
 chanceOfSwipe = 1
+chanceOfBack = 0
 
 # Keyboard Weights
 enterInput = 5
@@ -55,7 +56,7 @@ class MainNode:
         global appName
         self.state = generateHashedState(state)
         self.name = "M"
-        self.depth = 1
+        self.depth = 0
         self.appXCoor = 0
         self.appYCoor = 0
         self.package = ''
@@ -482,8 +483,10 @@ def userInputSettings():
              'test_case.py Location:']
     default = ['Omni', 500, '192.168.8.101:5555', "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/Pics/",
                "C:/Users/awslw/Desktop/FYP/uiAutomator Dump/"]
-    checkboxLabel = ['Enable "Allow all Permissions"', 'Enable "Input into textbox once" Algorithm',
-                     'Enable "Reset data in App after testing"']
+    checkboxLabelTrue = ['Enable "Allow all Permissions"', 'Enable "Input into textbox once" Algorithm',
+                         'Enable "Reset data in App after testing"']
+
+    checkboxLabelFalse = ['Enable back as an action']
 
     # Store widget and its contents
     entries = []
@@ -509,25 +512,35 @@ def userInputSettings():
         Label(gui, text=' ', bg='black').grid(row=index, column=2, sticky=W, pady=1)
         index = index + 1
 
-    # Automate checkboxes
+    # Automate checkboxes (With default value=1)
     cIndex = 0
-    for i in checkboxLabel:
+    for i in checkboxLabelTrue:
         var = IntVar(value=1)
         checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
         checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
-        checkbox[cIndex]
+        cIndex += 1
+        index += 1
+        varsList.append(var)
+
+    sDefaultZero = cIndex
+
+    # Checkboxes (With default value=0) - Automate Enhancement
+    for i in checkboxLabelFalse:
+        var = IntVar()
+        checkbox.append(Checkbutton(gui, text=i, bg='black', fg='forest green', variable=var))
+        checkbox[cIndex].grid(row=index, column=1, sticky=W, pady=5)
         cIndex += 1
         index += 1
         varsList.append(var)
 
     # Save button
-    Button(gui, text="Save", command=(lambda v=varsList, e=entries: save_button(e, v)), width=10, relief="groove")\
-        .grid(row=index + 1, column=1, pady=4, sticky=W)
+    Button(gui, text="Save", command=(lambda sd=sDefaultZero, v=varsList, e=entries: save_button(e, v, sd)),
+           width=10, relief="groove").grid(row=index + 1, column=1, pady=4, sticky=W)
     gui.mainloop()
     gui.destroy()
 
 
-def save_button(entries, checkboxes):
+def save_button(entries, checkboxes, sDefaultZero):
     global gui
     global appName
     global numberOfInstructions
@@ -537,6 +550,7 @@ def save_button(entries, checkboxes):
     global alwaysAllowPermissions
     global inputTextOnce
     global closeAppClean
+    global chanceOfBack
 
     # Store App Name
     appName = str(entries[0].get())
@@ -583,6 +597,13 @@ def save_button(entries, checkboxes):
     else:
         closeAppClean = True
 
+    # Enable back as an action
+    temp = str(checkboxes[sDefaultZero].get())
+    if temp == '0':
+        chanceOfBack = 0
+    # Assumming equal probability for all actions
+    else:
+        chanceOfBack = 1
     # Save and close GUI interface
     showinfo("Success", "Settings Saved.")
     gui.quit()
@@ -697,7 +718,36 @@ def handlePermission():
 
 
 # Emulator Operations
+def action_back(text):
+    global selectionType
+    global prevNode
+    selectionType = 'back'
+    # Manual back() without state checking [Close keyboard, close error pop up]
+    d.press.back()
+    d.wait.update()
+    print("d.press.back() - " + str(text))
+    f.write("    d.press.back()\n    # " + str(text) + "\n")
+    f.write("    d.wait.update()\n")
+    f.write("    time.sleep(2.0)\n")
+    time.sleep(2.5)
+
+    # Check current state
+    backState = d.dump(compressed=True).encode('utf-8')
+    backState_h = generateHashedState(backState)
+
+    # Re-open app if in main menu
+    if backState_h == m.state:
+        print("back() into main menu, Reopening app")
+        prevNode = m
+        click(m.appXCoor, m.appYCoor)
+
+    return
+
+
 def m_back(text):
+    global selectionType
+
+    selectionType = 'back'
     # Manual back() without state checking [Close keyboard, close error pop up]
     d.press.back()
     d.wait.update()
@@ -851,7 +901,7 @@ def scroll_up():
     global prevNode
     global selectionType
     global scrollSteps
-    selectionType = "scroll"
+    selectionType = 'scroll'
     # Operation
     d.swipe(prevNode.c_scrollableX[prevNode.currentIndex], prevNode.c_scrollableY[prevNode.currentIndex],
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.e_scrollableY[prevNode.currentIndex] - 5,
@@ -881,7 +931,7 @@ def scroll_down():
     global selectionType
     global scrollSteps
     # Change selection type
-    selectionType = "scroll"
+    selectionType = 'scroll'
     # Operation
     d.swipe(prevNode.c_scrollableX[prevNode.currentIndex], prevNode.c_scrollableY[prevNode.currentIndex],
             prevNode.c_scrollableX[prevNode.currentIndex], prevNode.scrollableY[prevNode.currentIndex] + 5,
@@ -910,7 +960,7 @@ def swipe_left():
     global selectionType
     global scrollSteps
     # Change selection type
-    selectionType = "swipe"
+    selectionType = 'swipe'
     # Operation
     d.swipe(prevNode.c_scrollableX[prevNode.currentIndex], prevNode.c_scrollableY[prevNode.currentIndex],
             prevNode.scrollableX[prevNode.currentIndex] + 5, prevNode.c_scrollableY[prevNode.currentIndex],
@@ -939,7 +989,7 @@ def swipe_right():
     global selectionType
     global scrollSteps
     # Change selection type
-    selectionType = "swipe"
+    selectionType = 'swipe'
     # Operation
     d.swipe(prevNode.c_scrollableX[prevNode.currentIndex], prevNode.c_scrollableY[prevNode.currentIndex],
             prevNode.e_scrollableX[prevNode.currentIndex] - 5, prevNode.c_scrollableY[prevNode.currentIndex],
@@ -1002,8 +1052,9 @@ def checkKeyboard():
 
         # Write and close option
         if inputTextOnce is True:
-            # Check if invalid selection type
-            if selectionType == 'scroll' or selectionType == 'swipe':
+            # Check if invalid selection types
+            if selectionType == 'scroll' or selectionType == 'swipe' or selectionType == 'invalid' \
+                    or selectionType == 'back':
                 # Manual back to close keyboard
                 m_back("Close Keyboard")
                 return
@@ -1335,7 +1386,7 @@ def currentIndexDecision(decision):
     # Index logic point for Long Click
     if decision == 'long-click':
         # Change selection type
-        selectionType = "long-click"
+        selectionType = 'long-click'
 
         # Selection of index based on weight
         probabilityList = [0] * prevNode.lcTransitionWeight[0]
@@ -1380,7 +1431,7 @@ def operationDecision():
     global numberOfInstructions
     # Decision Point (Weighted Random Algorithm)
     choice = random.choice(['lc'] * chanceOfLongClicks + ['sc'] * chanceOfScroll + ['c'] * chanceOfNormalClicks
-                           + ['sw'] * chanceOfSwipe)
+                           + ['sw'] * chanceOfSwipe + ['b'] * chanceOfBack)
 
     # Long Click Selected
     if choice == 'lc':
@@ -1665,6 +1716,11 @@ def operationDecision():
         click(prevNode.clickableXCoor[prevNode.currentIndex], prevNode.clickableYCoor[prevNode.currentIndex])
         return
 
+    # Optional Action
+    if choice == 'b':
+        action_back("Back operation from " + prevNode.name)
+        return
+
 
 # Initialise default User Inputs (Global)
 numberOfInstructions = 0            # Number of legal actions to be run
@@ -1694,7 +1750,7 @@ crashNum = 0                # Keeps track of number of crashes
 selfTransitionCount = 0     # Keeps track of number of self transsitions
 backFlag = False            # Skips checkNode() when back() is invoked
 permissionState = False     # Keeps track of whether current state is permission state
-selectionType = "click"     # Keeps track of current selection Type (Eg: Click, Scroll, etc)
+selectionType = 'click'     # Keeps track of current selection Type (Eg: Click, Scroll, etc)
 lcIndex = 0                 # Keeps track of current long-click index (for lcTransitionWeight[])
 sTime = time.time()         # Store start time, should be the last line of initialization
 
