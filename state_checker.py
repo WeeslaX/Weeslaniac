@@ -355,6 +355,5 @@ for i in longClickable:
 print("Number of long-clickable views:" + str(count))
 
 # Add your operations here:
-index = 0
-d.click(clickableXCoor[index],clickableYCoor[index])
-print 'clicked'
+d.click(clickableXCoor[4], clickableYCoor[4])
+
