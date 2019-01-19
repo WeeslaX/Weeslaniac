@@ -21,9 +21,7 @@ import numpy as np
 # Possible User inputs
 definedInvalidState = [""]          # Keeps track of user defined invalid states, Eg: 0RgeA6iQVV5U2UkI+0r1GA==\n
 selfTransitionLimit = 8             # Stores self transition limit to avoid getting stuck in one activity
-inputNum = '98'                     # Numerical half of inputText
-inputAlpha = 'ab'                   # Alphabetical half of inputText
-inputText = inputNum+inputAlpha     # Combines num and alphabet to form one string
+inputText = "98ab"                  # User defined value
 scrollSteps = 10                    # Keeps track of number of swipe/scroll steps
 
 # Operation Weights
@@ -698,7 +696,7 @@ def handlePermission():
         time.sleep(1.5)
         f.write("    " + temp + "\n")
         f.write("    d.wait.update()\n")
-        f.write("    time.sleep(1.5)\n")
+        f.write("    time.sleep(2.0)\n")
         f.write("    # Permission State detected, 'Allow' selected\n")
 
     # User set to always deny permissions
@@ -710,7 +708,7 @@ def handlePermission():
         time.sleep(1.5)
         f.write("    " + temp + "\n")
         f.write("    d.wait.update()\n")
-        f.write("    time.sleep(1.5)\n")
+        f.write("    time.sleep(2.0)\n")
         f.write("    # Permission State detected, 'Deny' selected\n")
 
     # Reset Flag
@@ -800,7 +798,7 @@ def back(text, keyboard=False):
                 cmd = "adb shell am force-stop " + m.package
                 subprocess.call(cmd)
                 f.write("    subprocess.call('" + cmd + "')\n")
-                f.write("    time.sleep(1.5)\n\n\n")
+                f.write("    time.sleep(2.0)\n\n\n")
                 prevNode = m
                 print("Re-opening app")
                 click(m.appXCoor, m.appYCoor)
@@ -870,7 +868,7 @@ def click(xCoor, yCoor):
     # Write to log file
     f.write("    " + temp + info + "\n")
     f.write("    d.wait.update()\n")
-    f.write("    time.sleep(1.5)\n")
+    f.write("    time.sleep(2.0)\n")
     time.sleep(1.5)
 
 
@@ -1029,8 +1027,6 @@ def checkEmulator():
 
 def checkKeyboard():
     # User defined variables
-    global inputNum
-    global inputAlpha
     global inputText
     global inputTextOnce
     global enterInput
@@ -1041,6 +1037,7 @@ def checkKeyboard():
     global prevNode
     global lcIndex
     global selectionType
+    global instCount
 
     # Virtual keyboard detection
     keyboardCondition = "mInputShown=true"
@@ -1070,14 +1067,16 @@ def checkKeyboard():
             print("Removed any text and entered " + inputText)
             f.write("    d(focused=True).clear_text()\n")
             f.write("    d.wait.update()\n")
-            f.write("    time.sleep(1.5)\n")
+            f.write("    time.sleep(2.0)\n")
             f.write("    # Removed any text\n")
             f.write("    d(focused=True).set_text('" + inputText + "')\n")
             f.write("    d.wait.update()\n")
-            f.write("    time.sleep(1.5)\n")
+            f.write("    time.sleep(2.0)\n")
             f.write("    # Entered " + inputText + "\n")
             # Use node check to determine weights
             m_back("Close Keyboard")
+            # Update instruction count
+            instCount += 1
 
         # Randomise write and close
         else:
@@ -1090,7 +1089,8 @@ def checkKeyboard():
                 subprocess.call(cmd)
                 print("Enter " + inputText + " into input field")
                 f.write("    subprocess.call('" + cmd + "')\n    # Enter " + inputText + " into input field\n")
-                f.write("    time.sleep(1.5)\n")
+                f.write("    time.sleep(2.0)\n")
+                instCount += 1
 
             # Did not input any text
             else:
@@ -1778,7 +1778,7 @@ prevNode = stateList[stateCount]
 stateCount = stateCount + 1
 
 
-# Random Weighted Algorithm, limited to number of instructions
+# Dynamic Weighted Random Selection Algorithm, limited to number of instructions
 instCount = 0
 
 # Loop till user defined number of actions is reached
@@ -1806,7 +1806,7 @@ if closeAppClean is False:
     d.wait.update()
     f.write("    d.press.home()\n")
     f.write("    d.wait.update()\n")
-    f.write("    time.sleep(1.5)\n\n\n")
+    f.write("    time.sleep(1.0)\n\n\n")
 
 # Reset app to factory settings upon exit
 else:
@@ -1815,14 +1815,14 @@ else:
         cmd = "adb shell pm clear " + m.package
         subprocess.call(cmd)
         f.write("    subprocess.call('" + cmd + "')\n")
-        f.write("    time.sleep(1.5)\n\n\n")
+        f.write("    time.sleep(1.0)\n\n\n")
 
     # Do not reset app if crashes are found (Fail-safe)
     else:
         cmd = "adb shell am force-stop " + m.package
         subprocess.call(cmd)
         f.write("    subprocess.call('" + cmd + "')\n")
-        f.write("    time.sleep(1.5)\n\n\n")
+        f.write("    time.sleep(1.0)\n\n\n")
 
 # Obtain elapsed time
 eTime = time.time() - sTime
