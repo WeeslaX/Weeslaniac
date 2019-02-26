@@ -77,10 +77,9 @@ adb devices
 
 ## Future Enhancements (In order of priorities)
 
-- Adding more user options to the "Settings" pop-up box, such as action percentage and input text.
+- Adding more user options to the "Settings" pop-up box, such as UI event percentage and customized input text.
 - Simple Terminal interface that provides all the neccessary tools to manage and run the fuzzing tool.
-- Allows interaction with 3rd party apps.
-- Adding a "mutate" feature as a separate script that complements the fuzzing tool.
-- Explore account registration capabilities.
+- Mutator_W: Run through test case once (store hashed version) before commencing mutation testing. 
 - Implement drag capability.
-- Visual node diagram that maps and links each screenshot states with its respective actions.
+- Allows interaction with 3rd party apps.
+- Explore account registration capabilities.
