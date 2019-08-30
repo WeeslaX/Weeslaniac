@@ -73,13 +73,3 @@ adb devices
 - "test_case.py Location" refers to the location where the output python script will be saved.
 
 4. Select "Save" to start fuzzing.
-
-
-## Future Enhancements (In order of priorities)
-
-- Adding more user options to the "Settings" pop-up box, such as UI event percentage and customized input text.
-- Simple Terminal interface that provides all the neccessary tools to manage and run the fuzzing tool.
-- Mutator_W: Run through test case once (store hashed version) before commencing mutation testing. 
-- Implement drag capability.
-- Allows interaction with 3rd party apps.
-- Explore account registration capabilities.
